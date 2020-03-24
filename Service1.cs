@@ -24,24 +24,29 @@ namespace ProcessBouncerService
 		};
 		string [] suspiciousParents = {"WINWORD.EXE","EXCEL.EXE","POWERPNT.EXE","powershell.exe","cmd.exe","WINWORD","EXCEL","POWERPNT","cmd","powershell"};
 		string [] suspiciousExePath = {"C:\\Users"};
-		string [] ext1 = { "jpg", "jpeg", "png", "pdf", "doc", "docx", "docm", "dot", "dotm", "xls", "xlsm", "xltm", "xlsx", "xlsb", "xlam", "ppt", "pot", "pptx", "pptm", "potm", "ppam", "ppsm", "sldm" };
+		string [] ext1 = { 
+			"jpg", "jpeg", "png", "pdf", 
+			"doc", "docx", "docm", "dot", "dotm", 
+			"xls", "xlsm", "xltm", "xlsx", "xlsb", "xlam", 
+			"ppt", "pot", "pptx", "pptm", "potm", "ppam", "ppsm", "sldm" 
+		};
 		string [] ext2 = {"exe", "com", "ps1", "dll", "bat", "pif"};
 		List<string> doubleExt = new List<string>();
 
 		[Flags]
         public enum ProcessAccess : uint
         {
-                Terminate = 0x00000001,
-                CreateThread = 0x00000002,
-                VMOperation = 0x00000008,
-                VMRead = 0x00000010,
-                VMWrite = 0x00000020,
-                DupHandle = 0x00000040,
-                SetInformation = 0x00000200,
-                QueryInformation = 0x00000400,
-                SuspendResume = 0x00000800,
-                Synchronize = 0x00100000,
-                All = 0x001F0FFF
+            Terminate = 0x00000001,
+            CreateThread = 0x00000002,
+            VMOperation = 0x00000008,
+            VMRead = 0x00000010,
+            VMWrite = 0x00000020,
+            DupHandle = 0x00000040,
+            SetInformation = 0x00000200,
+            QueryInformation = 0x00000400,
+            SuspendResume = 0x00000800,
+            Synchronize = 0x00100000,
+            All = 0x001F0FFF
         }
 
         [DllImport("ntdll.dll", EntryPoint = "NtSuspendProcess", SetLastError = true)]
@@ -67,13 +72,15 @@ namespace ProcessBouncerService
 
 	    protected override void OnStart(string[] args)
         {
-			foreach (string e1 in ext1)
-			{
-				foreach (string e2 in ext2)
-				{
-					doubleExt.Add(String.Format("{0}.{1}", e1, e2));
-				}
+        	//ToDo 
+        	/*
+			if not whitlelistFile{
+				generate whitelistFile from History
 			}
+			else{
+				read whitelistFile
+			}
+        	*/
 
 			WriteLog("Service has been started");
 			//WqlEventQuery eventQuery = new WqlEventQuery("__InstanceCreationEvent", new TimeSpan(0,0,1), "TargetInstance isa \"Win32_Process\"");
@@ -106,16 +113,22 @@ namespace ProcessBouncerService
 				WriteLog(String.Format("SuspiciousExecutionPath - {0}({1})", procName, pid));
 			}
 
-			if(Path.GetFileName(exePath).Split('.').Length > 2)
+			var splittedPath = Path.GetFileName(exePath).Split('.');
+			if(splittedPath.Length > 2)
 			{
-				suspExt = true;
-				WriteLog(String.Format("DoubleExtension - {0}", pid));
+				if(ext1.Contains(splittedPath[splittedPath.Length -1]) && ext2.Contains(splittedPath[splittedPath.Length -2]))
+				{
+					suspExt = true;
+					WriteLog(String.Format("DoubleExtension - {0}", pid));
+				}
 			}
 
 			if(suspicious.Contains(procName))
 			{
                 if(suspiciousParents.Contains(parentProcName))
 				{
+					//ToDo
+					//Add recursion for indirect parents
             		WriteLog(String.Format("SuspiciousProcess - {0}({2}) - started from - {1}({3})", procName, parentProcName, pid, ppid));
 					WriteLog(String.Format("KillingProcess - {0}", pid));
 					KillProc((uint)pid);
@@ -130,6 +143,8 @@ namespace ProcessBouncerService
 
 			// Resume Process if Process is not malicous
 			ResumeProc((uint)pid);
+			//ToDo
+			//RsumeWithSuperVision(look for unusualy high read/write operations / critical access tries)
         }
 
 		private void SuspendProc(uint procId)
