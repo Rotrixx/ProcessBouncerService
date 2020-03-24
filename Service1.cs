@@ -15,9 +15,9 @@ using System.Runtime.InteropServices;
 
 namespace ProcessBouncerService
 {
-    public partial class Service1 : ServiceBase
-    {
-        string logPath = "C:\\ProcessBouncer";
+	public partial class Service1 : ServiceBase
+	{
+		string logPath = "C:\\ProcessBouncer";
 		string [] suspicious = {
 			"powershell.exe","cmd.exe","regedit.exe","cmd","powershell",
 			"msiexec.exe","certutil.exe","bitadmin.exe","psexec.exe","winexesvc","remcos.exe","wscript.exe","cscript.exe","reg.exe","sc.exe","netsh","whoami", "copy", "net", "tasklist","schtasks","streams.exe" // lotl Tools
@@ -34,68 +34,68 @@ namespace ProcessBouncerService
 		List<string> doubleExt = new List<string>();
 
 		[Flags]
-        public enum ProcessAccess : uint
-        {
-            Terminate = 0x00000001,
-            CreateThread = 0x00000002,
-            VMOperation = 0x00000008,
-            VMRead = 0x00000010,
-            VMWrite = 0x00000020,
-            DupHandle = 0x00000040,
-            SetInformation = 0x00000200,
-            QueryInformation = 0x00000400,
-            SuspendResume = 0x00000800,
-            Synchronize = 0x00100000,
-            All = 0x001F0FFF
-        }
+		public enum ProcessAccess : uint
+		{
+			Terminate = 0x00000001,
+			CreateThread = 0x00000002,
+			VMOperation = 0x00000008,
+			VMRead = 0x00000010,
+			VMWrite = 0x00000020,
+			DupHandle = 0x00000040,
+			SetInformation = 0x00000200,
+			QueryInformation = 0x00000400,
+			SuspendResume = 0x00000800,
+			Synchronize = 0x00100000,
+			All = 0x001F0FFF
+		}
 
-        [DllImport("ntdll.dll", EntryPoint = "NtSuspendProcess", SetLastError = true)]
-        public static extern uint SuspendProcess(IntPtr processHandle);
+		[DllImport("ntdll.dll", EntryPoint = "NtSuspendProcess", SetLastError = true)]
+		public static extern uint SuspendProcess(IntPtr processHandle);
 
-        [DllImport("ntdll.dll", EntryPoint = "NtResumeProcess", SetLastError = true)]
-        public static extern uint ResumeProcess(IntPtr processHandle);
+		[DllImport("ntdll.dll", EntryPoint = "NtResumeProcess", SetLastError = true)]
+		public static extern uint ResumeProcess(IntPtr processHandle);
 
 		[DllImport("ntdll.dll", EntryPoint = "NtTerminateProcess", SetLastError = true)]
 		public static extern uint TerminateProcess(IntPtr processHandle);
 
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr OpenProcess(ProcessAccess dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
+		[DllImport("kernel32.dll")]
+		public static extern IntPtr OpenProcess(ProcessAccess dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
 
-        [DllImport("kernel32.dll", SetLastError=true)]
-        public static extern bool CloseHandle(IntPtr hObject);
+		[DllImport("kernel32.dll", SetLastError=true)]
+		public static extern bool CloseHandle(IntPtr hObject);
 
-        public Service1()
-        {
-            InitializeComponent();
-            this.ServiceName = "ProcessBouncerService";
-        }
+		public Service1()
+		{
+			InitializeComponent();
+			this.ServiceName = "ProcessBouncerService";
+		}
 
-	    protected override void OnStart(string[] args)
-        {
-        	//ToDo 
-        	/*
+		protected override void OnStart(string[] args)
+		{
+			//ToDo 
+			/*
 			if not whitlelistFile{
 				generate whitelistFile from History
 			}
 			else{
 				read whitelistFile
 			}
-        	*/
+			*/
 
 			WriteLog("Service has been started");
 			//WqlEventQuery eventQuery = new WqlEventQuery("__InstanceCreationEvent", new TimeSpan(0,0,1), "TargetInstance isa \"Win32_Process\"");
 			ManagementEventWatcher eventWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace"));
 			eventWatcher.EventArrived += new EventArrivedEventHandler(CheckProcess);
 			eventWatcher.Start();
-        }
+		}
 
-        private void CheckProcess(object sender, EventArrivedEventArgs e)
-        {
-            //ToDo
+		private void CheckProcess(object sender, EventArrivedEventArgs e)
+		{
+			//ToDo
 			object procName = e.NewEvent.Properties["ProcessName"].Value;
 			int pid = (int)e.NewEvent.Properties["ProcessID"].Value;
 			int ppid = (int)e.NewEvent.Properties["ParentProcessID"].Value;
-            Process proc = Process.GetProcessById(ppid);
+			Process proc = Process.GetProcessById(ppid);
 			object parentProcName = proc.ProcessName;
 			string exePath = Process.GetProcessById(pid).MainModule.FileName;
 
@@ -125,11 +125,11 @@ namespace ProcessBouncerService
 
 			if(suspicious.Contains(procName))
 			{
-                if(suspiciousParents.Contains(parentProcName))
+				if(suspiciousParents.Contains(parentProcName))
 				{
 					//ToDo
 					//Add recursion for indirect parents
-            		WriteLog(String.Format("SuspiciousProcess - {0}({2}) - started from - {1}({3})", procName, parentProcName, pid, ppid));
+					WriteLog(String.Format("SuspiciousProcess - {0}({2}) - started from - {1}({3})", procName, parentProcName, pid, ppid));
 					WriteLog(String.Format("KillingProcess - {0}", pid));
 					KillProc((uint)pid);
 					KillProc((uint)ppid);
@@ -145,14 +145,14 @@ namespace ProcessBouncerService
 			ResumeProc((uint)pid);
 			//ToDo
 			//RsumeWithSuperVision(look for unusualy high read/write operations / critical access tries)
-        }
+		}
 
 		private void SuspendProc(uint procId)
 		{
-            IntPtr maliciousProc = OpenProcess(ProcessAccess.SuspendResume, false, procId);
+			IntPtr maliciousProc = OpenProcess(ProcessAccess.SuspendResume, false, procId);
 			if(maliciousProc != IntPtr.Zero)
 			{
-            	uint suspendProc = SuspendProcess(maliciousProc);
+				uint suspendProc = SuspendProcess(maliciousProc);
 				if(suspendProc == 0)
 				{
 					CloseHandle(maliciousProc);
@@ -171,7 +171,7 @@ namespace ProcessBouncerService
 			IntPtr benignProc = OpenProcess(ProcessAccess.SuspendResume, false, procId);
 			if(benignProc != IntPtr.Zero)
 			{
-            	uint resumProc = ResumeProcess(benignProc);
+				uint resumProc = ResumeProcess(benignProc);
 				if(resumProc == 0)
 				{
 					CloseHandle(benignProc);
@@ -190,7 +190,7 @@ namespace ProcessBouncerService
 			IntPtr maliciousProc = OpenProcess(ProcessAccess.Terminate, false, procId);
 			if(maliciousProc != IntPtr.Zero)
 			{
-            	uint killProc = TerminateProcess(maliciousProc);
+				uint killProc = TerminateProcess(maliciousProc);
 				if(killProc == 0)
 				{
 					CloseHandle(maliciousProc);
@@ -205,24 +205,24 @@ namespace ProcessBouncerService
 
 		}
 
-        protected override void OnStop()
-        {
-            WriteLog("Service has been stopped.");
+		protected override void OnStop()
+		{
+			WriteLog("Service has been stopped.");
 			//eventWatcher.Stop();
-        }
+		}
 
-        private void WriteLog(string logMessage, bool addTimeStamp = true)
-        {
-            if (!Directory.Exists(logPath))
-                Directory.CreateDirectory(logPath);
+		private void WriteLog(string logMessage, bool addTimeStamp = true)
+		{
+			if (!Directory.Exists(logPath))
+				Directory.CreateDirectory(logPath);
 
-            var filePath = String.Format("{0}\\{1}_{2}.txt", logPath, ServiceName, DateTime.Now.ToString("yyyyMMdd", CultureInfo.CurrentCulture));
+			var filePath = String.Format("{0}\\{1}_{2}.txt", logPath, ServiceName, DateTime.Now.ToString("yyyyMMdd", CultureInfo.CurrentCulture));
 
-            if (addTimeStamp)
-                logMessage = String.Format("[{0}] - {1}{2}",
-                    DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture), logMessage, Environment.NewLine);
+			if (addTimeStamp)
+				logMessage = String.Format("[{0}] - {1}{2}",
+					DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture), logMessage, Environment.NewLine);
 
-            File.AppendAllText(filePath, logMessage);
-        }
-    }
+			File.AppendAllText(filePath, logMessage);
+		}
+	}
 }
