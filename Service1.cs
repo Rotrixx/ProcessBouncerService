@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.IO;
 using System.ServiceProcess;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Globalization;
@@ -15,23 +15,18 @@ using System.Runtime.InteropServices;
 
 namespace ProcessBouncerService
 {
+
 	public partial class Service1 : ServiceBase
 	{
-		string logPath = "C:\\ProcessBouncer";
-		string [] suspicious = {
-			"powershell.exe","cmd.exe","regedit.exe","cmd","powershell",
-			"msiexec.exe","certutil.exe","bitadmin.exe","psexec.exe","winexesvc","remcos.exe","wscript.exe","cscript.exe","reg.exe","sc.exe","netsh","whoami", "copy", "net", "tasklist","schtasks","streams.exe" // lotl Tools
-		};
-		string [] suspiciousParents = {"WINWORD.EXE","EXCEL.EXE","POWERPNT.EXE","powershell.exe","cmd.exe","WINWORD","EXCEL","POWERPNT","cmd","powershell"};
-		string [] suspiciousExePath = {"C:\\Users"};
-		string [] ext1 = { 
-			"jpg", "jpeg", "png", "pdf", 
-			"doc", "docx", "docm", "dot", "dotm", 
-			"xls", "xlsm", "xltm", "xlsx", "xlsb", "xlam", 
-			"ppt", "pot", "pptx", "pptm", "potm", "ppam", "ppsm", "sldm" 
-		};
-		string [] ext2 = {"exe", "com", "ps1", "dll", "bat", "pif"};
-		List<string> doubleExt = new List<string>();
+
+		string logPath;
+		string[] suspicious;
+		string[] suspiciousParents;
+		string[] suspiciousExePath;
+		string[] ext1;
+		string[] ext2;
+		string[] whitelistedPath;
+		string[] whitelistedProcesses;
 
 		[Flags]
 		public enum ProcessAccess : uint
@@ -82,6 +77,46 @@ namespace ProcessBouncerService
 			}
 			*/
 
+			int counter = 1;
+			string[] lines = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\config.txt");
+			foreach(string line in lines)
+			{
+				if(line.StartsWith("#"))
+				{
+					continue;
+				}
+
+				switch(counter)
+				{
+					case 1:
+						logPath = line;
+						break;
+					case 2:
+						suspicious = line.Split(',');
+						break;
+					case 3:
+						suspiciousParents = line.Split(',');
+						break;
+					case 4:
+						suspiciousExePath = line.Split(',');
+						break;
+					case 5:
+						ext1 = line.Split(',');
+						break;
+					case 6:
+						ext2 = line.Split(',');
+						break;
+					case 7:
+						whitelistedPath = line.Split(',');
+						break;
+					case 8:
+						whitelistedProcesses = line.Split(',');
+						break;
+				}
+				counter++;
+			}
+
+
 			WriteLog("Service has been started");
 			//WqlEventQuery eventQuery = new WqlEventQuery("__InstanceCreationEvent", new TimeSpan(0,0,1), "TargetInstance isa \"Win32_Process\"");
 			ManagementEventWatcher eventWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace"));
@@ -93,20 +128,25 @@ namespace ProcessBouncerService
 		{
 			//ToDo
 			object procName = e.NewEvent.Properties["ProcessName"].Value;
-			int pid = (int)e.NewEvent.Properties["ProcessID"].Value;
-			int ppid = (int)e.NewEvent.Properties["ParentProcessID"].Value;
-			Process proc = Process.GetProcessById(ppid);
-			object parentProcName = proc.ProcessName;
-			string exePath = Process.GetProcessById(pid).MainModule.FileName;
+			object pid = e.NewEvent.Properties["ProcessID"].Value;
+			object ppid = e.NewEvent.Properties["ParentProcessID"].Value;
+			//Process parentProc = new Process.GetProcessById((int)ppid);
+			//string parentProcName = proc.ProcessName;
+			//var proc = Process.GetProcessById((int)pid);
+			//string exePath = proc.MainModule.FileName;
+			//string exePath = Process.GetProcessById((int)pid).MainModule.FileName;
+
+			//WriteLog(String.Format("ExePath - {0}", exePath));
 
 			bool suspExePath = false;
 			bool suspExt = false;
 
 			// Suspend newly created Process till it was checked
-			SuspendProc((uint)pid);
+			//SuspendProc((uint)pid);
 
 			//if(suspiciousExePath.Contains(exePath) or doubleExt.Contains(Path.GetFileName(exePath)))
 			// ToDo: Find better solution than substring
+			/*
 			if(suspiciousExePath.Contains(exePath.Substring(0,7)))
 			{
 				suspExePath = true;
@@ -116,15 +156,17 @@ namespace ProcessBouncerService
 			var splittedPath = Path.GetFileName(exePath).Split('.');
 			if(splittedPath.Length > 2)
 			{
-				if(ext1.Contains(splittedPath[splittedPath.Length -1]) && ext2.Contains(splittedPath[splittedPath.Length -2]))
+				if(ext1.Contains(splittedPath[splittedPath.Length - 2]) && ext2.Contains(splittedPath[splittedPath.Length - 1]))
 				{
 					suspExt = true;
 					WriteLog(String.Format("DoubleExtension - {0}", pid));
 				}
 			}
+			*/
 
 			if(suspicious.Contains(procName))
 			{
+				/*
 				if(suspiciousParents.Contains(parentProcName))
 				{
 					//ToDo
@@ -135,6 +177,8 @@ namespace ProcessBouncerService
 					KillProc((uint)ppid);
 					return;
 				}
+				*/
+
 				WriteLog(String.Format("SuspiciousProcessStarted - {0} - {1}", procName, pid));
 				WriteLog(String.Format("KillingProcess - {0}", pid));
 				KillProc((uint)pid);
@@ -142,7 +186,7 @@ namespace ProcessBouncerService
 			}
 
 			// Resume Process if Process is not malicous
-			ResumeProc((uint)pid);
+			//ResumeProc((uint)pid);
 			//ToDo
 			//RsumeWithSuperVision(look for unusualy high read/write operations / critical access tries)
 		}

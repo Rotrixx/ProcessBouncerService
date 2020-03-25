@@ -1,0 +1,16 @@
+#logPath
+C:\ProcessBouncer
+#suspiciousProcesses and Living of the Land Tools
+powershell.exe,cmd.exe,regedit.exe,cmd,powershell, msiexec.exe,certutil.exe,bitadmin.exe,psexec.exe,winexesvc,remcos.exe,wscript.exe,cscript.exe,reg.exe,sc.exe,netsh,whoami, copy, net, tasklist,schtasks,streams.exe
+#suspiciousParentProcesses
+WINWORD.EXE,EXCEL.EXE,POWERPNT.EXE,powershell.exe,cmd.exe,WINWORD,EXCEL,POWERPNT,cmd,powershell
+#suspiciousExecutionPaths
+C:\Users
+#Ext1 for doubleExtensionCheck
+jpg, jpeg, png, pdf, doc, docx, docm, dot, dotm, xls, xlsm, xltm, xlsx, xlsb, xlam, ppt, pot, pptx, pptm, potm, ppam, ppsm, sldm
+#Ext2 for doubleExtensionCheck
+exe, com, ps1, dll, bat, pif
+#WhitelistedPaths
+C:\Windows
+#WhitelistedProcesses
+chrome.exe
