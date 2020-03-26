@@ -13,4 +13,6 @@ exe, com, ps1, dll, bat, pif
 #WhitelistedPaths
 C:\Windows
 #WhitelistedProcesses
-chrome.exe
+svchost.exe, chrome.exe, devenv.exe, SearchUI.exe, SearchIndexer.exe, explorer.exe, MsMpEng.exe, taskhostw.exe, dllhost.exe, MicrosoftEdge.exe, ServiceHub.DataWarehouseHost.exe
+#Interval for BulkWrite checking (60.000 => 1 Min)
+120000

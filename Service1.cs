@@ -28,6 +28,9 @@ namespace ProcessBouncerService
 		string[] whitelistedPath;
 		string[] whitelistedProcesses;
 
+		Timer timer = new Timer();
+		int interval;
+
 		[Flags]
 		public enum ProcessAccess : uint
 		{
@@ -112,6 +115,9 @@ namespace ProcessBouncerService
 					case 8:
 						whitelistedProcesses = line.Split(',');
 						break;
+					case 9:
+						interval = (int)line;
+						break;
 				}
 				counter++;
 			}
@@ -120,75 +126,123 @@ namespace ProcessBouncerService
 			WriteLog("Service has been started");
 			//WqlEventQuery eventQuery = new WqlEventQuery("__InstanceCreationEvent", new TimeSpan(0,0,1), "TargetInstance isa \"Win32_Process\"");
 			ManagementEventWatcher eventWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace"));
+			//ManagementEventWatcher transferWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_Process WHERE WriteTransferCount > 5000000 and WriteOperationCount > 10 and UserModeTime > 2000000"));
+			//ManagementEventWatcher registryWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM RegistryKeyChangeEvent WHERE KeyPath = ..."))
 			eventWatcher.EventArrived += new EventArrivedEventHandler(CheckProcess);
+			//transferWatcher.EventArrived += new EventArrivedEventHandler(CheckTransferProcess);
 			eventWatcher.Start();
+			//transferWatcher.Start();
+
+			timer.Elapsed += new ElapsedEventHandler(CheckTransferProcess);
+			timer.Interval = interval;
+			timer.Enabled = true;
 		}
 
 		private void CheckProcess(object sender, EventArrivedEventArgs e)
 		{
-			//ToDo
-			object procName = e.NewEvent.Properties["ProcessName"].Value;
 			object pid = e.NewEvent.Properties["ProcessID"].Value;
-			object ppid = e.NewEvent.Properties["ParentProcessID"].Value;
-			//Process parentProc = new Process.GetProcessById((int)ppid);
-			//string parentProcName = proc.ProcessName;
-			//var proc = Process.GetProcessById((int)pid);
-			//string exePath = proc.MainModule.FileName;
-			//string exePath = Process.GetProcessById((int)pid).MainModule.FileName;
 
-			//WriteLog(String.Format("ExePath - {0}", exePath));
-
-			bool suspExePath = false;
-			bool suspExt = false;
-
-			// Suspend newly created Process till it was checked
-			//SuspendProc((uint)pid);
-
-			//if(suspiciousExePath.Contains(exePath) or doubleExt.Contains(Path.GetFileName(exePath)))
-			// ToDo: Find better solution than substring
-			/*
-			if(suspiciousExePath.Contains(exePath.Substring(0,7)))
+			ManagementObjectSearcher searcher = new ManagementObjectSearcher(new WqlObjectQuery(String.Format("SELECT * FROM Win32_Process WHERE ProcessId={0}", pid)));
+			ManagementObjectCollection collection = searcher.Get();
+			foreach(ManagementObject tmp in collection)
 			{
-				suspExePath = true;
-				WriteLog(String.Format("SuspiciousExecutionPath - {0}({1})", procName, pid));
-			}
+				object procName = tmp.Properties["Caption"].Value;
+				object ppid = tmp.Properties["ParentProcessId"].Value;
+				object cmd = tmp.Properties["CommandLine"].Value;
+				object exePath = tmp.Properties["ExecutablePath"].Value;
+				object name = tmp.Properties["Name"].Value;
 
-			var splittedPath = Path.GetFileName(exePath).Split('.');
-			if(splittedPath.Length > 2)
-			{
-				if(ext1.Contains(splittedPath[splittedPath.Length - 2]) && ext2.Contains(splittedPath[splittedPath.Length - 1]))
+				bool suspExePath = false;
+				bool suspExt = false;
+
+				if (whitelistedProcesses.Contains(procName))
 				{
-					suspExt = true;
-					WriteLog(String.Format("DoubleExtension - {0}", pid));
+					break;
 				}
-			}
-			*/
 
-			if(suspicious.Contains(procName))
-			{
-				/*
-				if(suspiciousParents.Contains(parentProcName))
+				WriteLog(String.Format("ExePath - {0}", exePath));
+				WriteLog(String.Format("cmd - {0}", cmd));
+				WriteLog(String.Format("name - {0}", name));
+
+				// Suspend newly created Process till it was checked
+				//SuspendProc((uint)pid);
+
+				//if(suspiciousExePath.Contains(exePath) or doubleExt.Contains(Path.GetFileName(exePath)))
+				// ToDo: Find better solution than substring
+				if (suspiciousExePath.Contains(exePath.ToString().Substring(0, 7)))
 				{
-					//ToDo
-					//Add recursion for indirect parents
-					WriteLog(String.Format("SuspiciousProcess - {0}({2}) - started from - {1}({3})", procName, parentProcName, pid, ppid));
+					suspExePath = true;
+					WriteLog(String.Format("SuspiciousExecutionPath - {0}({1})", procName, pid));
+				}
+
+				var splittedPath = exePath.ToString().Split('.');
+				if (splittedPath.Length > 2)
+				{
+					if (ext1.Contains(splittedPath[splittedPath.Length - 2]) && ext2.Contains(splittedPath[splittedPath.Length - 1]))
+					{
+						suspExt = true;
+						WriteLog(String.Format("DoubleExtension - {0}", pid));
+					}
+				}
+
+				if (suspicious.Contains(procName) || suspicious.Contains(name))
+				{
+					/*
+					if(suspiciousParents.Contains(parentProcName))
+					{
+						//ToDo
+						//Add recursion for indirect parents
+						WriteLog(String.Format("SuspiciousProcess - {0}({2}) - started from - {1}({3})", procName, parentProcName, pid, ppid));
+						WriteLog(String.Format("KillingProcess - {0}", pid));
+						KillProc((uint)pid);
+						KillProc((uint)ppid);
+						return;
+					}
+					*/
+
+					WriteLog(String.Format("SuspiciousProcessStarted - {0} - {1}", procName, pid));
 					WriteLog(String.Format("KillingProcess - {0}", pid));
 					KillProc((uint)pid);
-					KillProc((uint)ppid);
-					return;
 				}
-				*/
 
-				WriteLog(String.Format("SuspiciousProcessStarted - {0} - {1}", procName, pid));
-				WriteLog(String.Format("KillingProcess - {0}", pid));
-				KillProc((uint)pid);
-				return;
+				// Resume Process if Process is not malicous
+				//ResumeProc((uint)pid);
 			}
+			return;
+		}
 
-			// Resume Process if Process is not malicous
-			//ResumeProc((uint)pid);
-			//ToDo
-			//RsumeWithSuperVision(look for unusualy high read/write operations / critical access tries)
+		private void CheckTransferProcess(object source, ElapsedEventArgs e)
+		{
+			WriteLog("Checking BulkWriting");
+			ManagementObjectSearcher searcher = new ManagementObjectSearcher(new WqlObjectQuery("SELECT * FROM Win32_Process WHERE WriteTransferCount > 5000000 and WriteOperationCount > 10 and UserModeTime > 10000000"));
+			//Checks for 10 WriteOperations done and a speed of 5MB/sec
+			ManagementObjectCollection collection = searcher.Get();
+			foreach (ManagementObject tmp in collection)
+			{
+				object procName = tmp.Properties["Caption"].Value;
+				object pid = tmp.Properties["ProcessId"].Value;
+				object ppid = tmp.Properties["ParentProcessId"].Value;
+				object cmd = tmp.Properties["CommandLine"].Value;
+				object exePath = tmp.Properties["ExecutablePath"].Value;
+				object name = tmp.Properties["Name"].Value;
+
+				if (whitelistedProcesses.Contains(procName))
+				{
+					break;
+				}
+
+				//ToDo
+				// SuspendProc((uint)pid);
+				// Open PopUp??
+				// using WTSSendMessageA function Problem: can't get user response?
+				// or
+				// using another "hidden" gui application
+				// ResumeProc((uint)pid);
+				WriteLog(String.Format("{0}({1}) does bulk writing", procName, pid));
+
+				//KillProc((uint)pid);
+			}
+			return;
 		}
 
 		private void SuspendProc(uint procId)
