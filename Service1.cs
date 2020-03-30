@@ -172,14 +172,20 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("SuspiciousExecutionPath - {0}({1})", procName, pid));
 				}
 
-				string[] splittedPath = justExePath(cmd);
-				if (splittedPath.Length > 2)
+				try
 				{
-					if (ext1.Contains(splittedPath[1]) && ext2.Contains(splittedPath[2]))
+					string[] splittedPath = justExePath(cmd);
+					if (splittedPath.Length > 2)
 					{
-						suspExt = true;
-						WriteLog(String.Format("DoubleExtension - {0}({1})", procName, pid));
+						if (ext1.Contains(splittedPath[1]) && ext2.Contains(splittedPath[2]))
+						{
+							suspExt = true;
+							WriteLog(String.Format("DoubleExtension - {0}({1})", procName, pid));
+						}
 					}
+				}catch(Exception ex)
+				{
+					suspExt = false;
 				}
 
 				if (suspicious.Contains(procName) || suspicious.Contains(name))
