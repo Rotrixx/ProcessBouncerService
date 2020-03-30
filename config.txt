@@ -1,18 +1,18 @@
 #logPath
 C:\ProcessBouncer
-#suspiciousProcesses and Living of the Land Tools
-powershell.exe,cmd.exe,regedit.exe,cmd,powershell, msiexec.exe,certutil.exe,bitadmin.exe,psexec.exe,winexesvc,remcos.exe,wscript.exe,cscript.exe,reg.exe,sc.exe,netsh,whoami, copy, net, tasklist,schtasks,streams.exe
+#suspicious Processes and Living of the Land Tools
+powershell.exe,cmd.exe,regedit.exe,cmd,powershell,msiexec.exe,certutil.exe,bitadmin.exe,psexec.exe,winexesvc,remcos.exe,wscript.exe,cscript.exe,reg.exe,sc.exe,netsh,whoami,copy,net,tasklist,schtasks,streams.exe
 #suspiciousParentProcesses
 WINWORD.EXE,EXCEL.EXE,POWERPNT.EXE,powershell.exe,cmd.exe,WINWORD,EXCEL,POWERPNT,cmd,powershell
 #suspiciousExecutionPaths
 C:\Users
-#Ext1 for doubleExtensionCheck
-jpg, jpeg, png, pdf, doc, docx, docm, dot, dotm, xls, xlsm, xltm, xlsx, xlsb, xlam, ppt, pot, pptx, pptm, potm, ppam, ppsm, sldm
-#Ext2 for doubleExtensionCheck
-exe, com, ps1, dll, bat, pif
+#Ext1 for double ExtensionCheck
+jpg,jpeg,png,pdf,doc,docx,docm,dot,dotm,xls,xlsm,xltm,xlsx,xlsb,xlam,ppt,pot,pptx,pptm,potm,ppam,ppsm,sldm
+#Ext2 for double ExtensionCheck
+exe,com,ps1,dll,bat,pif
 #WhitelistedPaths
 C:\Windows
 #WhitelistedProcesses
-svchost.exe, chrome.exe, devenv.exe, SearchUI.exe, SearchIndexer.exe, explorer.exe, MsMpEng.exe, taskhostw.exe, dllhost.exe, MicrosoftEdge.exe, ServiceHub.DataWarehouseHost.exe
-#Interval for BulkWrite checking (60.000 => 1 Min)
+svchost.exe,chrome.exe,devenv.exe,SearchUI.exe,SearchIndexer.exe,explorer.exe,MsMpEng.exe,taskhostw.exe,dllhost.exe,MicrosoftEdge.exe,ServiceHub.DataWarehouseHost.exe
+#IntervalforBulkWritechecking(60.000=>1Min)
 120000
