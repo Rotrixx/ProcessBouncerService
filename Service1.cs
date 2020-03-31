@@ -164,28 +164,23 @@ namespace ProcessBouncerService
 				// Suspend newly created Process till it was checked
 				//SuspendProc((uint)pid);
 
-				//if(suspiciousExePath.Contains(exePath) or doubleExt.Contains(Path.GetFileName(exePath)))
 				// ToDo: Find better solution than substring
-				if (suspiciousExePath.Contains(exePath.ToString().Substring(0, 7)))
+				foreach(string s in suspiciousExePath)
 				{
-					suspExePath = true;
-					WriteLog(String.Format("SuspiciousExecutionPath - {0}({1})", procName, pid));
+					WriteLog(s);
+					WriteLog(exePath.ToString());
+					if (exePath.ToString().StartsWith(s))
+					{
+						suspExePath = true;
+						WriteLog(String.Format("SuspiciousExecutionPath - {0}({1}) - {2}", procName, pid, exePath));
+					}
 				}
 
-				try
+				string doubleExtPattern = @"\\[A-Za-z0-9]*\.[A-Za-z0-9]*\.[A-Za-z0-9]*\b";
+				foreach(Match match in Regex.Matches(cmd.ToString(),doubleExtPattern))
 				{
-					string[] splittedPath = justExePath(cmd);
-					if (splittedPath.Length > 2)
-					{
-						if (ext1.Contains(splittedPath[1]) && ext2.Contains(splittedPath[2]))
-						{
-							suspExt = true;
-							WriteLog(String.Format("DoubleExtension - {0}({1})", procName, pid));
-						}
-					}
-				}catch(Exception ex)
-				{
-					suspExt = false;
+					suspExt = true;
+					WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, match));
 				}
 
 				if (suspicious.Contains(procName) || suspicious.Contains(name))
@@ -259,19 +254,6 @@ namespace ProcessBouncerService
 				//KillProc((uint)pid);
 			}
 			return;
-		}
-
-		private string[] justExePath(object cmdLine)
-		{
-			string[] splittedPath = cmdLine.ToString().Split(' ');
-			string executionPath = splittedPath[2];
-			executionPath.Replace('"', ' ');
-			executionPath = Regex.Replace(executionPath, @"\s+", "");
-			string[] tmpExePath = executionPath.Split('\\');
-			string exeFile = tmpExePath[tmpExePath.Length - 1];
-			exeFile = Regex.Replace(exeFile, @"""", "");
-			splittedPath = exeFile.Split('.');
-			return splittedPath;
 		}
 
 		private void SuspendProc(uint procId)
