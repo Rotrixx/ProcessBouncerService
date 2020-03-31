@@ -12,6 +12,7 @@ using System.Timers;
 using System.Globalization;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 namespace ProcessBouncerService
 {
@@ -27,6 +28,7 @@ namespace ProcessBouncerService
 		string[] ext2;
 		string[] whitelistedPath;
 		string[] whitelistedProcesses;
+		string[] sig;
 
 		Timer timer = new Timer();
 		int interval;
@@ -81,6 +83,8 @@ namespace ProcessBouncerService
 			*/
 
 			//ToDo: Remove whitespaces in list like processes, ext1, ext2
+
+			sig = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\sig");
 
 			int counter = 1;
 			string[] lines = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\config.txt");
@@ -167,8 +171,6 @@ namespace ProcessBouncerService
 				// ToDo: Find better solution than substring
 				foreach(string s in suspiciousExePath)
 				{
-					WriteLog(s);
-					WriteLog(exePath.ToString());
 					if (exePath.ToString().StartsWith(s))
 					{
 						suspExePath = true;
@@ -182,6 +184,18 @@ namespace ProcessBouncerService
 					suspExt = true;
 					WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, match));
 				}
+
+				string suspMD5 = CalculateMD5(exePath.ToString());
+				WriteLog(suspMD5);
+
+				if (sig.Contains(suspMD5))
+				{
+					WriteLog(String.Format("Signature found! - MALWARE! - {0}", exePath));
+					KillProc((uint)pid);
+					return;
+				}
+
+				WriteLog("Done SignatureChecking!");
 
 				if (suspicious.Contains(procName) || suspicious.Contains(name))
 				{
@@ -254,6 +268,18 @@ namespace ProcessBouncerService
 				//KillProc((uint)pid);
 			}
 			return;
+		}
+
+		private string CalculateMD5(string filename)
+		{
+    		using (var md5 = MD5.Create())
+    		{
+        		using (var stream = File.OpenRead(filename))
+        		{
+            		var hash = md5.ComputeHash(stream);
+            		return BitConverter.ToString(hash).Replace("-", "").ToLower();
+        		}
+    		}
 		}
 
 		private void SuspendProc(uint procId)
