@@ -1,0 +1,6 @@
+{"logPath":"C:\\ProcessBouncer"}
+{"suspicious":["powershell.exe","cmd.exe","regedit.exe","cmd","powershell", "msiexec.exe","certutil.exe","bitadmin.exe","psexec.exe","winexesvc","remcos.exe","wscript.exe","cscript.exe","reg.exe","sc.exe","netsh","whoami", "copy", "net", "tasklist","schtasks","streams.exe"]}
+{"suspiciousParents":["WINWORD.EXE","EXCEL.EXE","POWERPNT.EXE","powershell.exe","cmd.exe","WINWORD","EXCEL","POWERPNT","cmd","powershell"]}
+{"suspiciousExePath":"C:\\Users"}
+{"ext1":["jpg", "jpeg", "png", "pdf", "doc", "docx", "docm", "dot", "dotm", "xls", "xlsm", "xltm", "xlsx", "xlsb", "xlam", "ppt", "pot", "pptx", "pptm", "potm", "ppam", "ppsm", "sldm"]} 
+{"ext2":["exe", "com", "ps1", "dll", "bat", "pif"]}

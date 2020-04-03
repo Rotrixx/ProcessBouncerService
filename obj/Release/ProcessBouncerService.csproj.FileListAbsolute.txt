@@ -1,9 +1,0 @@
-Z:\ProcessBouncerService\obj\Release\ProcessBouncerService.csprojAssemblyReference.cache
-Z:\ProcessBouncerService\obj\Release\ProcessBouncerService.ProjectInstaller.resources
-Z:\ProcessBouncerService\obj\Release\ProcessBouncerService.csproj.GenerateResource.cache
-Z:\ProcessBouncerService\obj\Release\ProcessBouncerService.csproj.CoreCompileInputs.cache
-Z:\ProcessBouncerService\bin\Release\ProcessBouncerService.exe.config
-Z:\ProcessBouncerService\bin\Release\ProcessBouncerService.exe
-Z:\ProcessBouncerService\bin\Release\ProcessBouncerService.pdb
-Z:\ProcessBouncerService\obj\Release\ProcessBouncerService.exe
-Z:\ProcessBouncerService\obj\Release\ProcessBouncerService.pdb

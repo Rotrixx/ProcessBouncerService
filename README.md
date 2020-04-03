@@ -2,11 +2,12 @@
 A process-based malware protection tool.
 
 ## Setup:
-* Open: cmd as admin
-* Enter: `sc create "ProcessBouncerService" binPath="<PathToExe>"` or `C:\Windows\Microsoft.NET\Framework\v<newest>\installutil.exe "<PathToExe>"`
-* Open: Control Panel > Administrative Tools > Services and start ProcessBouncerService
-* Create: "C:\ProcessBouncer\"
-* Move: config.txt and sig into "C:\ProcessBouncer\"
+* Download and extract.
+* Run Install.bat as admin.
+
+### In combination with ProcessBouncerGUI(currently not working(WIP)):
+* Make sure MSMQ is activated on your system (https://teckangaroo.com/enable-msmq-server-windows-10-easy-steps/)
+* Make sure MSMQ-Rules allow read and write for everybody
 
 ## Config:
-Comments start with a `#` and will be ignored. Please don't add new lines or spaces in the listings. More comfortable way will be added in the future.
+Comments start with a `#` and will be ignored. Please don't add new lines or spaces in the listings. More comfortable and secure way will be added in the future.

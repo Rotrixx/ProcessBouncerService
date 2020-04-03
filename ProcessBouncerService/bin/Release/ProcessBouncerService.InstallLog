@@ -1,0 +1,13 @@
+﻿Assembly Z:\ProcessBouncerService\bin\Release\ProcessBouncerService.exe wird installiert.
+Betroffene Parameter:
+   logtoconsole = 
+   logfile = Z:\ProcessBouncerService\bin\Release\ProcessBouncerService.InstallLog
+   assemblypath = Z:\ProcessBouncerService\bin\Release\ProcessBouncerService.exe
+Dienst ProcessBouncerService wird installiert...
+Dienst ProcessBouncerService wurde installiert.
+Die EventLog-Quelle ProcessBouncerService im Protokoll Application wird erstellt...
+Assembly Z:\ProcessBouncerService\bin\Release\ProcessBouncerService.exe wird ausgeführt.
+Betroffene Parameter:
+   logtoconsole = 
+   logfile = Z:\ProcessBouncerService\bin\Release\ProcessBouncerService.InstallLog
+   assemblypath = Z:\ProcessBouncerService\bin\Release\ProcessBouncerService.exe

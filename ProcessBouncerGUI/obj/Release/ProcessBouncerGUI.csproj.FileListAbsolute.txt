@@ -1,0 +1,11 @@
+Z:\ProcessBouncerGUI\bin\Release\ProcessBouncerGUI.exe.config
+Z:\ProcessBouncerGUI\bin\Release\ProcessBouncerGUI.exe
+Z:\ProcessBouncerGUI\bin\Release\ProcessBouncerGUI.pdb
+Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.csprojAssemblyReference.cache
+Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.Form1.resources
+Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.Properties.Resources.resources
+Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.csproj.GenerateResource.cache
+Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.csproj.CoreCompileInputs.cache
+Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.exe
+Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.pdb
+Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.PupUp.resources

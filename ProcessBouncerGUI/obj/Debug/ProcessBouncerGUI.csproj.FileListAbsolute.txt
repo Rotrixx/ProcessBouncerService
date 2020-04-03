@@ -1,0 +1,10 @@
+Z:\ProcessBouncerGUI\bin\Debug\ProcessBouncerGUI.exe.config
+Z:\ProcessBouncerGUI\bin\Debug\ProcessBouncerGUI.exe
+Z:\ProcessBouncerGUI\bin\Debug\ProcessBouncerGUI.pdb
+Z:\ProcessBouncerGUI\obj\Debug\ProcessBouncerGUI.csprojAssemblyReference.cache
+Z:\ProcessBouncerGUI\obj\Debug\ProcessBouncerGUI.Form1.resources
+Z:\ProcessBouncerGUI\obj\Debug\ProcessBouncerGUI.Properties.Resources.resources
+Z:\ProcessBouncerGUI\obj\Debug\ProcessBouncerGUI.csproj.GenerateResource.cache
+Z:\ProcessBouncerGUI\obj\Debug\ProcessBouncerGUI.csproj.CoreCompileInputs.cache
+Z:\ProcessBouncerGUI\obj\Debug\ProcessBouncerGUI.exe
+Z:\ProcessBouncerGUI\obj\Debug\ProcessBouncerGUI.pdb
