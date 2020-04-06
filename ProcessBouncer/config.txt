@@ -4,17 +4,24 @@ C:\ProcessBouncer
 powershell.exe,cmd.exe,regedit.exe,cmd,powershell,msiexec.exe,certutil.exe,bitadmin.exe,psexec.exe,winexesvc,remcos.exe,wscript.exe,cscript.exe,reg.exe,sc.exe,netsh,whoami,copy,net,tasklist,schtasks,streams.exe
 #suspiciousParentProcesses
 WINWORD.EXE,EXCEL.EXE,POWERPNT.EXE,powershell.exe,cmd.exe,WINWORD,EXCEL,POWERPNT,cmd,powershell
-#suspiciousExecutionPaths
-C:\Users
-#Ext1 for double ExtensionCheck
+#suspiciousExecutionPaths Note: use \\ for path instead of \
+C:\\Users
+#Ext1 for double ExtensionCheck not needed
 jpg,jpeg,png,pdf,doc,docx,docm,dot,dotm,xls,xlsm,xltm,xlsx,xlsb,xlam,ppt,pot,pptx,pptm,potm,ppam,ppsm,sldm
-#Ext2 for double ExtensionCheck
+#Ext2 for double ExtensionCheck not needed
 exe,com,ps1,dll,bat,pif
-#WhitelistedPaths
+#WhitelistedPaths not implemented yet
 C:\Windows
 #WhitelistedProcesses
 svchost.exe,chrome.exe,devenv.exe,SearchUI.exe,SearchIndexer.exe,explorer.exe,MsMpEng.exe,taskhostw.exe,dllhost.exe,MicrosoftEdge.exe,ServiceHub.DataWarehouseHost.exe
-#WhitelistedScripts
+#WhitelistedScripts Note: Use full Path if possibleand \\ for path instead of \
 example.ps1
 #IntervalforBulkWritechecking(60.000=>1Min)
 120000
+#LogLevel
+#1 => JustKilledProcesses
+#2 => MoreInformationAboutJustKilledProcesses
+#3 => MostImportantInformation
+#4 => StepByStepWorkflow
+#5 => VeryDetailedForDebugging
+3

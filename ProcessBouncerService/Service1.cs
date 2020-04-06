@@ -30,6 +30,8 @@ namespace ProcessBouncerService
 		string[] whitelistedPath;
 		string[] whitelistedProcesses;
 		string[] whitelistedScripts;
+		int logLevel;
+
 		string[] sig;
 
 		MessageQueue pbq;
@@ -103,8 +105,10 @@ namespace ProcessBouncerService
 			}
 			*/
 
+			//Reading Signatures
 			sig = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\sig");
 
+			//Reading ConfigFile
 			int counter = 1;
 			string[] lines = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\config.txt");
 			foreach(string line in lines)
@@ -146,17 +150,21 @@ namespace ProcessBouncerService
 					case 10:
 						intervalBulk = Convert.ToInt32(line);
 						break;
-
+					case 11:
+						logLevel = Convert.ToInt32(line);
+						break;
 				}
 				counter++;
 			}
 
 
 			WriteLog("Service has been started");
+			//Watch for newly started Processes
 			ManagementEventWatcher eventWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace"));
 			eventWatcher.EventArrived += new EventArrivedEventHandler(CheckProcess);
 			eventWatcher.Start();
 
+			//Check for bilk writing with a timer
 			timerBulk.Elapsed += new ElapsedEventHandler(CheckTransferProcess);
 			timerBulk.Interval = intervalBulk;
 			timerBulk.Enabled = true;
@@ -166,6 +174,7 @@ namespace ProcessBouncerService
 		{
 			object pid = e.NewEvent.Properties["ProcessID"].Value;
 
+			//Get more Information about Process from WMI
 			WqlObjectQuery query = new WqlObjectQuery(String.Format("SELECT * FROM Win32_Process WHERE ProcessId={0}", pid));
 			ManagementObjectSearcher searcher = new ManagementObjectSearcher(query);
 			ManagementObjectCollection collection = searcher.Get();
@@ -182,11 +191,13 @@ namespace ProcessBouncerService
 				bool suspExt = false;
 				bool whitelistedScript = false;
 
+				//Stop when Process is whitlisted
 				if (whitelistedProcesses.Contains(procName))
 				{
 					break;
 				}
 
+				//Stop if Script is whitlisted
 				foreach (string s in whitelistedScripts)
 				{
 					string pattern = String.Format(@"\b{0}\b", s);
@@ -201,29 +212,44 @@ namespace ProcessBouncerService
 					break;
 				}
 
-				WriteLog(String.Format("Checking - {0}({1})", procName, pid));
+				if (logLevel >= 4)
+				{
+					WriteLog(String.Format("Checking - {0}({1})", procName, pid));
+				}
 
 				// Suspend newly created Process till it was checked
 				//Problems at startup?
 				//SuspendProc((uint)pid);
 
-				foreach(string s in suspiciousExePath)
+				//Check for suspicous Path
+				foreach (string s in suspiciousExePath)
 				{
-					if (exePath.ToString().StartsWith(s))
+					string pattern = String.Format(@"{0}", s);
+					MatchCollection tmpMatch = Regex.Matches(cmd.ToString(), pattern);
+					if (tmpMatch.Count > 0)
 					{
 						suspExePath = true;
-						WriteLog(String.Format("SuspiciousExecutionPath - {0}({1}) - {2}", procName, pid, exePath));
+						if (logLevel >= 3)
+						{
+							WriteLog(String.Format("SuspiciousExecutionPath - {0}({1}) - {2}", procName, pid, cmd));
+						}
 					}
 				}
 
-				string doubleExtPattern = @"\\[A-Za-z0-9]*\.[A-Za-z0-9]*\.[A-Za-z0-9]*\b";
+				//Check for double Extensions
+				string doubleExtPattern = @"\\[A-Za-z0-9]*\.[A-Za-z0-9]*\.[A-Za-z0-9]*(?!\.)\b";
+				//May have problems with some Windows directories
 				foreach(Match match in Regex.Matches(cmd.ToString(),doubleExtPattern))
 				{
 					suspExt = true;
-					WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, match));
+					if (logLevel >= 3)
+					{
+						WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, match));
+					}
 				}
 
-				var watch = System.Diagnostics.Stopwatch.StartNew();
+				//Check Hash of exe file
+				//var watch = System.Diagnostics.Stopwatch.StartNew();
 				string suspMD5 = CalculateMD5(exePath.ToString());
 				if (sig.Contains(suspMD5))
 				{
@@ -231,11 +257,11 @@ namespace ProcessBouncerService
 					KillProc((uint)pid);
 					return;
 				}
-				watch.Stop();
-				var elapsedMs = watch.ElapsedMilliseconds;
-				WriteLog(String.Format("Checked {0} Hashes in {1} Milliseconds", sig.Length, elapsedMs));
+				//watch.Stop();
+				//var elapsedMs = watch.ElapsedMilliseconds;
+				//if(logLevel >= 5) WriteLog(String.Format("Checked {0} Hashes in {1} Milliseconds", sig.Length, elapsedMs));
 
-
+				//Check for blacklisted/suspicous Processes by name
 				if (suspicious.Contains(procName) || suspicious.Contains(name))
 				{
 					bool suspParent = false;
@@ -255,14 +281,20 @@ namespace ProcessBouncerService
 						//ToDo
 						//Add recursion for indirect parents
 						WriteLog(String.Format("SuspiciousProcess - {0}({2}) - started from - {1}({3})", procName, parentProcName, pid, ppid));
-						WriteLog(String.Format("KillingProcess - {0}", pid));
+						if (logLevel >= 3)
+						{
+							WriteLog(String.Format("KillingProcess - {0}", pid));
+						}
 						KillProc((uint)pid);
 						KillProc((uint)ppid);
 						return;
 					}
 
 					WriteLog(String.Format("SuspiciousProcessStarted - {0}({1})", procName, pid));
-					WriteLog(String.Format("KillingProcess - {0}", pid));
+					if (logLevel >= 3)
+					{
+						WriteLog(String.Format("KillingProcess - {0}", pid));
+					}
 					KillProc((uint)pid);
 					return;
 				}
@@ -296,7 +328,10 @@ namespace ProcessBouncerService
 				}
 				*/
 
-				WriteLog(String.Format("All Good! - {0}({1})", procName, pid));
+				if (logLevel >= 5)
+				{
+					WriteLog(String.Format("All Good! - {0}({1})", procName, pid));
+				}
 
 				// Resume Process if Process is not malicous
 				//ResumeProc((uint)pid);
@@ -306,7 +341,11 @@ namespace ProcessBouncerService
 
 		private void CheckTransferProcess(object source, ElapsedEventArgs e)
 		{
-			WriteLog("Checking BulkWriting");
+			if (logLevel >= 5)
+			{
+				WriteLog("Checking BulkWriting");
+			}
+			//Get Processes with high writingOperations
 			ManagementObjectSearcher searcher = new ManagementObjectSearcher(new WqlObjectQuery("SELECT * FROM Win32_Process WHERE WriteTransferCount > 20000000 and WriteOperationCount > 10 and UserModeTime > 10000000"));
 			//Checks for 10 WriteOperations done and a speed of 20MB/sec
 			ManagementObjectCollection collection = searcher.Get();
@@ -319,7 +358,25 @@ namespace ProcessBouncerService
 				object exePath = tmp.Properties["ExecutablePath"].Value;
 				object name = tmp.Properties["Name"].Value;
 
+				bool whitelistedScript = false;
+
+				//Stop if Process is whitelisted
 				if (whitelistedProcesses.Contains(procName))
+				{
+					break;
+				}
+
+				//Stop if Script is whitelisted
+				foreach (string s in whitelistedScripts)
+				{
+					string pattern = String.Format(@"\b{0}\b", s);
+					MatchCollection tmpMatch = Regex.Matches(cmd.ToString(), pattern);
+					if (tmpMatch.Count > 0)
+					{
+						whitelistedScript = true;
+					}
+				}
+				if (whitelistedScript)
 				{
 					break;
 				}
@@ -409,13 +466,22 @@ namespace ProcessBouncerService
 				if (suspendProc == 0)
 				{
 					CloseHandle(maliciousProc);
-					WriteLog(String.Format("SuspendedProcess - {0}", procId));
+					if (logLevel >= 4)
+					{
+						WriteLog(String.Format("SuspendedProcess - {0}", procId));
+					}
 					return;
 				}
-				WriteLog(String.Format("Failed to suspend Process - {0}", procId));
+				if (logLevel >= 2)
+				{
+					WriteLog(String.Format("Failed to suspend Process - {0}", procId));
+				}
 				return;
 			}
-			WriteLog(String.Format("Unable to open Process - {0}", procId));
+			if (logLevel >= 2)
+			{
+				WriteLog(String.Format("Unable to open Process - {0}", procId));
+			}
 			return;
 		}
 
@@ -428,13 +494,22 @@ namespace ProcessBouncerService
 				if(resumProc == 0)
 				{
 					CloseHandle(benignProc);
-					WriteLog(String.Format("ResumedProcess - {0}", procId));
+					if (logLevel >= 4)
+					{
+						WriteLog(String.Format("ResumedProcess - {0}", procId));
+					}
 					return;
 				}
-				WriteLog(String.Format("Failed to resume Process - {0}", procId));
+				if (logLevel >= 2)
+				{
+					WriteLog(String.Format("Failed to resume Process - {0}", procId));
+				}
 				return;
 			}
-			WriteLog(String.Format("Unable to open Process - {0}", procId));
+			if (logLevel >= 2)
+			{
+				WriteLog(String.Format("Unable to open Process - {0}", procId));
+			}
 			return;
 		}
 
@@ -450,10 +525,16 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("KilledProcess - {0}", procId));
 					return;
 				}
-				WriteLog(String.Format("Failed to kill Process - {0}", procId));
+				if (logLevel >= 2)
+				{
+					WriteLog(String.Format("Failed to kill Process - {0}", procId));
+				}
 				return;
 			}
-			WriteLog(String.Format("Unable to open Process - {0}", procId));
+			if (logLevel >= 2)
+			{
+				WriteLog(String.Format("Unable to open Process - {0}", procId));
+			}
 			return;
 
 		}
