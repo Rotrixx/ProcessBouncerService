@@ -12,7 +12,10 @@ Comments start with a `#` and will be ignored. Please don't add new lines or spa
 
 If you want to add your own signatures, add the MD5-Hash in a new line to `C:\ProcessBouncer\sig`. Currently there are 421803 Hashes from ClamAV Virus Database (https://www.clamav.net/downloads) in `C:\ProcessBouncer\sig`.
 
+## **NOTE:**
+**This project is currently work in progress. Only basic functionality is working right now. Suggestions and feedback is more than welcome.**
+
 ## Contact:
 If you have questions, feedback or suggestions feel free to contact me.
 
-Twitter: @r0trixx
+Twitter: [@r0trixx](https://mobile.twitter.com/r0trixx/)
