@@ -94,16 +94,14 @@ namespace ProcessBouncerService
 
 			//ToDo: Remove whitespaces in list like processes, ext1, ext2
 			
-			/*
-			if(MessageQueue.Exists(@".\private$\ProcessBouncerQueue"))
+			if(MessageQueue.Exists(@".\private$\pbq"))
 			{
-				pbq = new MessageQueue(@".\private$\ProcessBouncerQueue");
+				pbq = new MessageQueue(@".\private$\pbq");
 			}
 			else
 			{
-				pbq = MessageQueue.Create(@".\private$\ProcessBouncerQueue");
+				pbq = MessageQueue.Create(@".\private$\pbq");
 			}
-			*/
 
 			//Reading Signatures
 			sig = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\sig");
@@ -299,26 +297,30 @@ namespace ProcessBouncerService
 					return;
 				}
 
-				/*
 				if(suspExePath || suspExt){
+					SuspendProc(pid);
 					sendMsg(exePath.ToString(), "Susp");
+					WriteLog("Message send");
 					Message userRet = rcvMsg();
 					if(userRet.Body.ToString() == "R" && userRet.Label.ToString() == "Susp")
 					{
 						WriteLog(String.Format("User resumed {0}({1})", procName, pid));
 						ResumeProc((uint)pid);
+						sendMsg("Done","Susp");
 						return;
 					}
 					else if(userRet.Body.ToString() == "K" && userRet.Label.ToString() == "Susp")
 					{
 						WriteLog(String.Format("User killed {0}({1})", procName, pid));
 						KillProc((uint)pid);
+						sendMsg("Done","Susp");
 						return;
 					}
 					else if(userRet.Body.ToString() == "S" && userRet.Label.ToString() == "Susp")
 					{
 						WriteLog(String.Format("User keeps suspending {0}({1})", procName, pid));
 						KillProc((uint)pid);
+						sendMsg("Done","Susp");
 						return;
 					}
 					else
@@ -326,7 +328,6 @@ namespace ProcessBouncerService
 						WriteLog("No Time!");
 					}
 				}
-				*/
 
 				if (logLevel >= 5)
 				{
@@ -384,25 +385,28 @@ namespace ProcessBouncerService
 				//ToDo
 				//SuspendProc((uint)pid);
 				WriteLog(String.Format("{0}({1}) does bulk writing", procName, pid));
-				/*
+
 				sendMsg(String.Format("{0}", exePath),"Bulk");
 				Message userRet = rcvMsg();
 				if(userRet.Body.ToString() == "R" && userRet.Body.ToString() == "Bulk")
 				{
 					WriteLog(String.Format("User resumed {0}({1})", procName, pid));
 					ResumeProc((uint)pid);
+					sendMsg("Done","Bulk");
 					return;
 				}
 				else if(userRet.Body.ToString() == "K" && userRet.Body.ToString() == "Bulk")
 				{
 					WriteLog(String.Format("User killed {0}({1})", procName, pid));
 					KillProc((uint)pid);
+					sendMsg("Done","Bulk");
 					return;
 				}
 				else if(userRet.Body.ToString() == "S" && userRet.Body.ToString() == "Bulk")
 				{
 					WriteLog(String.Format("User keeps suspending {0}({1})", procName, pid));
-					KillProc((uint)pid);
+					SuspendProc((uint)pid);
+					sendMsg("Done","Bulk");
 					return;
 				}
 				else
@@ -410,7 +414,6 @@ namespace ProcessBouncerService
 					WriteLog("No Time!");
 				}
 				//KillProc((uint)pid);
-				*/
 			}
 			return;
 		}
@@ -432,7 +435,16 @@ namespace ProcessBouncerService
 			Message message = new Message();
 			message.Body = msg;
 			message.Label = lbl;
-			pbq.Send(message);
+			WriteLog(String.Format("Sednding: {0}", msg));
+			try
+			{
+				pbq.Send(message);
+			}
+			catch (MessageQueueException e)
+			{
+				WriteLog(e.Message);
+			}
+			WriteLog("DOEN");
 			return;
 		}
 

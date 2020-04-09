@@ -12,47 +12,62 @@ using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Forms;
 using Message = System.Messaging.Message;
+using static ProcessBouncerGUI.PupUp;
 
 namespace ProcessBouncerGUI
 {
 	public partial class Form1 : Form
 	{
 		MessageQueue pbq;
-		PopUp popUp;
 		MessagePriority highest = MessagePriority.Highest;
 		MessagePriority high = MessagePriority.High;
 		MessagePriority normal = MessagePriority.Normal;
 		MessagePriority low = MessagePriority.Low;
 
-		TimeSpan interval = new TimeSpan(0,0,1);
+		TimeSpan interval = new TimeSpan(0,0,1); //1 sec?
 
 		public Form1()
 		{
 			InitializeComponent();
-			if(MessageQueue.Exists(@".\private$\ProcessBouncerQueue"))
+			if(MessageQueue.Exists(@".\private$\pbq"))
 			{
-				pbq = new MessageQueue(@".\private$\ProcessBouncerQueue");
+				pbq = new MessageQueue(@".\private$\pbq");
 			}
 			else
 			{
-				pbq = MessageQueue.Create(@".\private$\ProcessBouncerQueue");
+				pbq = MessageQueue.Create(@".\private$\pbq");
 			}
 
-			
-			while (true)
+			pbq.ReceiveCompleted += new ReceiveCompletedEventHandler(QueueMessageReceived);
+			pbq.BeginReceive();
+		}
+
+		/*
+		while (true)
+		{
+			Message curr = rcvMsg(interval);
+			if(curr.Label.ToString() == "Susp")
 			{
-				Message curr = rcvMsg(interval);
-				if(curr.Label.ToString() == "Susp")
+				PupUp tmp = new PupUp();
+				tmp.Show();
+				Message response = rcvMsg(new TimeSpan(0, 1, 0));
+				if (response.Body.ToString() == "Done")
 				{
-					PopUp tmp = new PopUp();
-					tmp.Show();
+					tmp.Close();
 				}
-				else if(curr.Label.ToString() == "Bulk")
+			}
+			else if(curr.Label.ToString() == "Bulk")
+			{
+				PupUp tmp = new PupUp();
+				tmp.Show();
+				Message response = rcvMsg(new TimeSpan(0,1,0));
+				if (response.Body.ToString() == "Done")
 				{
-					PopUp tmp = new PopUp();
+					tmp.Close();
 				}
 			}
 		}
+		*/
 
 		private void buttonAddProc_Click(object sender, EventArgs e)
 		{
@@ -66,7 +81,8 @@ namespace ProcessBouncerGUI
 
 		private void buttonEditConfig_Click(object sender, EventArgs e)
 		{
-
+			PupUp temp = new PupUp();
+			temp.Show();
 		}
 
 		private void buttonTogglePopUp_Click(object sender, EventArgs e)
@@ -76,7 +92,7 @@ namespace ProcessBouncerGUI
 
 		private void openConfigFile()
 		{
-
+			
 		}
 
 		private void blockedProcesses_SelectedIndexChanged(object sender, EventArgs e)
@@ -104,7 +120,9 @@ namespace ProcessBouncerGUI
 			}
 			catch (MessageQueueException e)
 			{
-				
+				Console.WriteLine(e.Message);
+				Console.WriteLine(e.ErrorCode);
+				Console.WriteLine(e.MessageQueueErrorCode);
 			}
 			catch (InvalidOperationException e)
 			{
@@ -175,6 +193,51 @@ namespace ProcessBouncerGUI
 				cs.Close();
 				fsCrypt.Close();
 			}
+		}
+
+		private void QueueMessageReceived(Object source, ReceiveCompletedEventArgs asyncResult)
+		{
+			MessageQueue mq = (MessageQueue)source;
+
+			//once a message is received, stop receiving
+			Message curr = mq.EndReceive(asyncResult.AsyncResult);
+
+			//popUpFunc(curr);
+			PupUp temp = new PupUp
+			{
+				LblText = curr.Body.ToString()
+			};
+			temp.ShowDialog();
+
+			//do something with the message
+			/*
+			if (curr.Label.ToString() == "Susp")
+			{
+				PupUp temp = new PupUp();
+				temp.Show();
+				msQueue.BeginReceive();
+				Message response = msQueue.EndReceive();
+				if (response.Body.ToString() == "Done")
+				{
+					tmp.Close();
+				}
+			}
+			else if (curr.Label.ToString() == "Bulk")
+			{
+				tmp.Show();
+				/*msQueue.BeginReceive();
+				response = msQueue.EndReceive();
+				if (response.Body.ToString() == "Done")
+				{
+					tmp.Close();
+				}
+			}
+			*/
+
+
+			//begin receiving again
+			//mq.BeginReceive();
+			return;
 		}
 
 	}

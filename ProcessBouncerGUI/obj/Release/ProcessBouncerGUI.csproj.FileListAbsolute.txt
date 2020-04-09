@@ -9,3 +9,14 @@ Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.csproj.CoreCompileInputs.cach
 Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.exe
 Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.pdb
 Z:\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.PupUp.resources
+Z:\ProcessBouncerService\ProcessBouncerGUI\bin\Release\ProcessBouncerGUI.exe.config
+Z:\ProcessBouncerService\ProcessBouncerGUI\bin\Release\ProcessBouncerGUI.exe
+Z:\ProcessBouncerService\ProcessBouncerGUI\bin\Release\ProcessBouncerGUI.pdb
+Z:\ProcessBouncerService\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.csprojAssemblyReference.cache
+Z:\ProcessBouncerService\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.Form1.resources
+Z:\ProcessBouncerService\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.Properties.Resources.resources
+Z:\ProcessBouncerService\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.PupUp.resources
+Z:\ProcessBouncerService\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.csproj.GenerateResource.cache
+Z:\ProcessBouncerService\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.csproj.CoreCompileInputs.cache
+Z:\ProcessBouncerService\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.exe
+Z:\ProcessBouncerService\ProcessBouncerGUI\obj\Release\ProcessBouncerGUI.pdb
