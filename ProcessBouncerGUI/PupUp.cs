@@ -14,6 +14,8 @@ namespace ProcessBouncerGUI
 	public partial class PupUp : Form
 	{
 		MessageQueue pbq;
+		DialogResult returnValueFromUser;
+
 		public PupUp()
 		{
 			InitializeComponent();
@@ -33,28 +35,16 @@ namespace ProcessBouncerGUI
 			}
 		}
 
-		private void buttonKill_Click(object sender, EventArgs e)
+		public string MsgText
 		{
-			sendMsg("K", "Susp");
-		}
-
-		private void buttonSuspend_Click(object sender, EventArgs e)
-		{
-			sendMsg("S", "Susp");
-		}
-
-		private void buttonResume_Click(object sender, EventArgs e)
-		{
-			sendMsg("R", "Susp");
-		}
-
-		public void sendMsg(string msg, string lbl)
-		{
-			System.Messaging.Message message = new System.Messaging.Message();
-			message.Body = msg;
-			message.Label = lbl;
-			pbq.Send(message);
-			return;
+			get
+			{
+				return this.labelStatic.Text;
+			}
+			set
+			{
+				this.labelStatic.Text = value;
+			}
 		}
 	}
 }

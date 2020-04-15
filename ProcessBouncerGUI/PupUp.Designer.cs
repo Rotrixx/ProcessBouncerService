@@ -37,33 +37,33 @@
             // 
             // buttonKill
             // 
+            this.buttonKill.DialogResult = System.Windows.Forms.DialogResult.No;
             this.buttonKill.Location = new System.Drawing.Point(287, 126);
             this.buttonKill.Name = "buttonKill";
             this.buttonKill.Size = new System.Drawing.Size(75, 23);
             this.buttonKill.TabIndex = 0;
             this.buttonKill.Text = "Kill";
             this.buttonKill.UseVisualStyleBackColor = true;
-            this.buttonKill.Click += new System.EventHandler(this.buttonKill_Click);
             // 
             // buttonResume
             // 
+            this.buttonResume.DialogResult = System.Windows.Forms.DialogResult.Yes;
             this.buttonResume.Location = new System.Drawing.Point(45, 126);
             this.buttonResume.Name = "buttonResume";
             this.buttonResume.Size = new System.Drawing.Size(75, 23);
             this.buttonResume.TabIndex = 1;
             this.buttonResume.Text = "Resume";
             this.buttonResume.UseVisualStyleBackColor = true;
-            this.buttonResume.Click += new System.EventHandler(this.buttonResume_Click);
             // 
             // buttonSuspend
             // 
+            this.buttonSuspend.DialogResult = System.Windows.Forms.DialogResult.Ignore;
             this.buttonSuspend.Location = new System.Drawing.Point(168, 126);
             this.buttonSuspend.Name = "buttonSuspend";
             this.buttonSuspend.Size = new System.Drawing.Size(75, 23);
             this.buttonSuspend.TabIndex = 2;
             this.buttonSuspend.Text = "Suspend";
             this.buttonSuspend.UseVisualStyleBackColor = true;
-            this.buttonSuspend.Click += new System.EventHandler(this.buttonSuspend_Click);
             // 
             // labelStatic
             // 

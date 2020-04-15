@@ -82,7 +82,7 @@ namespace ProcessBouncerGUI
 		private void buttonEditConfig_Click(object sender, EventArgs e)
 		{
 			PupUp temp = new PupUp();
-			temp.Show();
+			temp.ShowDialog();
 		}
 
 		private void buttonTogglePopUp_Click(object sender, EventArgs e)
@@ -100,10 +100,9 @@ namespace ProcessBouncerGUI
 
 		}
 
-		public void sendMsg(string msg, string lbl)
+		public void sendMsg(string lbl)
 		{
 			Message message = new Message();
-			message.Body = msg;
 			message.Label = lbl;
 			pbq.Send(message);
 			return;
@@ -202,41 +201,26 @@ namespace ProcessBouncerGUI
 			//once a message is received, stop receiving
 			Message curr = mq.EndReceive(asyncResult.AsyncResult);
 
-			//popUpFunc(curr);
-			PupUp temp = new PupUp
-			{
-				LblText = curr.Body.ToString()
-			};
-			temp.ShowDialog();
+			PupUp temp = new PupUp();
+			temp.LblText = curr.Label.ToString();
+			DialogResult result =  temp.ShowDialog();
 
-			//do something with the message
-			/*
-			if (curr.Label.ToString() == "Susp")
+			if (result == DialogResult.Yes)
 			{
-				PupUp temp = new PupUp();
-				temp.Show();
-				msQueue.BeginReceive();
-				Message response = msQueue.EndReceive();
-				if (response.Body.ToString() == "Done")
-				{
-					tmp.Close();
-				}
+				sendMsg("R");
 			}
-			else if (curr.Label.ToString() == "Bulk")
+			else if (result == DialogResult.No)
 			{
-				tmp.Show();
-				/*msQueue.BeginReceive();
-				response = msQueue.EndReceive();
-				if (response.Body.ToString() == "Done")
-				{
-					tmp.Close();
-				}
+				sendMsg("K");
 			}
-			*/
-
+			else if (result == DialogResult.Ignore)
+			{
+				sendMsg("S");
+			}
+			temp.Dispose();
 
 			//begin receiving again
-			//mq.BeginReceive();
+			mq.BeginReceive();
 			return;
 		}
 

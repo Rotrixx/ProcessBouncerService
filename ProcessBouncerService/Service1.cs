@@ -298,29 +298,26 @@ namespace ProcessBouncerService
 				}
 
 				if(suspExePath || suspExt){
-					SuspendProc(pid);
-					sendMsg(exePath.ToString(), "Susp");
+					SuspendProc((uint)pid);
+					sendMsg(exePath.ToString());
 					WriteLog("Message send");
 					Message userRet = rcvMsg();
-					if(userRet.Body.ToString() == "R" && userRet.Label.ToString() == "Susp")
+					if(userRet.Label.ToString() == "R")
 					{
 						WriteLog(String.Format("User resumed {0}({1})", procName, pid));
 						ResumeProc((uint)pid);
-						sendMsg("Done","Susp");
 						return;
 					}
-					else if(userRet.Body.ToString() == "K" && userRet.Label.ToString() == "Susp")
+					else if(userRet.Label.ToString() == "K")
 					{
 						WriteLog(String.Format("User killed {0}({1})", procName, pid));
 						KillProc((uint)pid);
-						sendMsg("Done","Susp");
 						return;
 					}
-					else if(userRet.Body.ToString() == "S" && userRet.Label.ToString() == "Susp")
+					else if(userRet.Label.ToString() == "S")
 					{
 						WriteLog(String.Format("User keeps suspending {0}({1})", procName, pid));
 						KillProc((uint)pid);
-						sendMsg("Done","Susp");
 						return;
 					}
 					else
@@ -386,27 +383,24 @@ namespace ProcessBouncerService
 				//SuspendProc((uint)pid);
 				WriteLog(String.Format("{0}({1}) does bulk writing", procName, pid));
 
-				sendMsg(String.Format("{0}", exePath),"Bulk");
+				sendMsg(String.Format("{0}", exePath));
 				Message userRet = rcvMsg();
-				if(userRet.Body.ToString() == "R" && userRet.Body.ToString() == "Bulk")
+				if(userRet.Label.ToString() == "R")
 				{
 					WriteLog(String.Format("User resumed {0}({1})", procName, pid));
 					ResumeProc((uint)pid);
-					sendMsg("Done","Bulk");
 					return;
 				}
-				else if(userRet.Body.ToString() == "K" && userRet.Body.ToString() == "Bulk")
+				else if(userRet.Label.ToString() == "K")
 				{
 					WriteLog(String.Format("User killed {0}({1})", procName, pid));
 					KillProc((uint)pid);
-					sendMsg("Done","Bulk");
 					return;
 				}
-				else if(userRet.Body.ToString() == "S" && userRet.Body.ToString() == "Bulk")
+				else if(userRet.Label.ToString() == "S")
 				{
 					WriteLog(String.Format("User keeps suspending {0}({1})", procName, pid));
 					SuspendProc((uint)pid);
-					sendMsg("Done","Bulk");
 					return;
 				}
 				else
@@ -430,12 +424,10 @@ namespace ProcessBouncerService
     		}
 		}
 
-		private void sendMsg(string msg, string lbl)
+		private void sendMsg(string lbl)
 		{
 			Message message = new Message();
-			message.Body = msg;
 			message.Label = lbl;
-			WriteLog(String.Format("Sednding: {0}", msg));
 			try
 			{
 				pbq.Send(message);
@@ -444,7 +436,6 @@ namespace ProcessBouncerService
 			{
 				WriteLog(e.Message);
 			}
-			WriteLog("DOEN");
 			return;
 		}
 
