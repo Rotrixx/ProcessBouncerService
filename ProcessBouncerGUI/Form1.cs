@@ -13,6 +13,7 @@ using System.Timers;
 using System.Windows.Forms;
 using Message = System.Messaging.Message;
 using static ProcessBouncerGUI.PupUp;
+using System.Diagnostics;
 
 namespace ProcessBouncerGUI
 {
@@ -81,13 +82,16 @@ namespace ProcessBouncerGUI
 
 		private void buttonEditConfig_Click(object sender, EventArgs e)
 		{
-			PupUp temp = new PupUp();
-			temp.ShowDialog();
+			DecryptFile("C:\\ProcessBouncer\\safeConfig.txt","C:\\ProcessBouncer\\tmp.txt");
+			Process editor = Process.Start("C:\\ProcessBouncer\\tmp.txt");
+			editor.WaitForExit();
+			EncryptFile("C:\\ProcessBouncer\\tmp.txt","C:\\ProcessBouncer\\safeConfig.txt");
+			File.Delete("C:\\ProcessBouncer\\tmp.txt");
 		}
 
 		private void buttonTogglePopUp_Click(object sender, EventArgs e)
 		{
-
+			EncryptFile("C:\\ProcessBouncer\\config.txt","C:\\ProcessBouncer\\safeConfig.txt");
 		}
 
 		private void openConfigFile()
@@ -131,66 +135,75 @@ namespace ProcessBouncerGUI
 			return empty;
 		}
 
-		//Source: https://www.codeproject.com/articles/26085/file-encryption-and-decryption-in-c
 		private void EncryptFile(string inputFile, string outputFile)
 		{
 			try
 			{
-				string password = @"8e4wttmVgeMPmjd_Zdf#NJ-!Q"; // Your Key Here
-				UnicodeEncoding UE = new UnicodeEncoding();
-				byte[] key = UE.GetBytes(password);
+				byte[] data = File.ReadAllBytes(inputFile);
+				byte[] encryptedBytes = null;
 
-				string cryptFile = outputFile;
-				FileStream fsCrypt = new FileStream(cryptFile, FileMode.Create);
+				byte[] passBytes = Encoding.ASCII.GetBytes("adminIsAPassword");
+				byte[] saltBytes = Encoding.ASCII.GetBytes("adminIsAGooderPasswordThanPassword");
 
-				RijndaelManaged RMCrypto = new RijndaelManaged();
-
-				CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateEncryptor(key, key), CryptoStreamMode.Write);
-
-				FileStream fsIn = new FileStream(inputFile, FileMode.Open);
-
-				int data;
-				while ((data = fsIn.ReadByte()) != -1)
+				var key = new Rfc2898DeriveBytes(passBytes, saltBytes, 32768);
+				// create an AES object
+				using (Aes aes = new AesManaged())
 				{
-					cs.WriteByte((byte)data);
+					// set the key size to 256
+					aes.KeySize = 256;
+					aes.Key = key.GetBytes(aes.KeySize / 8);
+					aes.IV = key.GetBytes(aes.BlockSize / 8);
+					using (MemoryStream ms = new MemoryStream())
+					{
+						using (CryptoStream cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
+						{
+							cs.Write(data, 0, data.Length);
+							cs.Close();
+						}
+						encryptedBytes = ms.ToArray();
+					}
 				}
-
-				fsIn.Close();
-				cs.Close();
-				fsCrypt.Close();
+				using (var fs = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
+				{
+					fs.Write(encryptedBytes, 0, encryptedBytes.Length);
+				}
 			}
-			catch
+			catch (Exception e)
 			{
 				MessageBox.Show("Encryption failed!", "Error");
+				Console.WriteLine(e.Message);
 			}
 		}
 
-		//Source: https://www.codeproject.com/articles/26085/file-encryption-and-decryption-in-c
 		private void DecryptFile(string inputFile, string outputFile)
 		{
+			byte[] dencryptedBytes = null;
+			byte[] data = File.ReadAllBytes(inputFile);
+
+			byte[] passBytes = Encoding.ASCII.GetBytes("adminIsAPassword");
+			byte[] saltBytes = Encoding.ASCII.GetBytes("adminIsAGooderPasswordThanPassword");
+
+			// create a key from the password and salt, use 32K iterations
+			var key = new Rfc2898DeriveBytes(passBytes, saltBytes, 32768);
+			using (Aes aes = new AesManaged())
 			{
-				string password = @"8e4wttmVgeMPmjd_Zdf#NJ-!Q"; // Your Key Here
-
-				UnicodeEncoding UE = new UnicodeEncoding();
-				byte[] key = UE.GetBytes(password);
-
-				FileStream fsCrypt = new FileStream(inputFile, FileMode.Open);
-
-				RijndaelManaged RMCrypto = new RijndaelManaged();
-
-				CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateDecryptor(key, key), CryptoStreamMode.Read);
-
-				FileStream fsOut = new FileStream(outputFile, FileMode.Create);
-
-				int data;
-				while ((data = cs.ReadByte()) != -1)
+				// set the key size to 256
+				aes.KeySize = 256;
+				aes.Key = key.GetBytes(aes.KeySize / 8);
+				aes.IV = key.GetBytes(aes.BlockSize / 8);
+				using (MemoryStream ms = new MemoryStream())
 				{
-					fsOut.WriteByte((byte)data);
+					using (CryptoStream cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Write))
+					{
+						cs.Write(data, 0, data.Length);
+						cs.Close();
+					}
+					dencryptedBytes = ms.ToArray();
 				}
-
-				fsOut.Close();
-				cs.Close();
-				fsCrypt.Close();
+				using (var fs = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
+				{
+					fs.Write(dencryptedBytes, 0, dencryptedBytes.Length);
+				}
 			}
 		}
 
