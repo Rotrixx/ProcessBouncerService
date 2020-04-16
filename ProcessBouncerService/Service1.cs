@@ -14,6 +14,7 @@ using System.Management;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Messaging;
+using System.Text;
 
 namespace ProcessBouncerService
 {
@@ -108,7 +109,15 @@ namespace ProcessBouncerService
 
 			//Reading ConfigFile
 			int counter = 1;
-			string[] lines = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\config.txt");
+			string[] lines;
+			if (File.Exists(@"C:\ProcessBouncer\safeConfig.txt"))
+			{
+				lines = DecryptFile(@"C:\ProcessBouncer\safeConfig.txt");
+			}
+			else
+			{
+				lines = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\config.txt");
+			}
 			foreach(string line in lines)
 			{
 				if(line.StartsWith("#"))
@@ -239,10 +248,14 @@ namespace ProcessBouncerService
 				//May have problems with some Windows directories
 				foreach(Match match in Regex.Matches(cmd.ToString(),doubleExtPattern))
 				{
-					suspExt = true;
-					if (logLevel >= 3)
+					string[] parts = match.ToString().Split('.');
+					if (ext2.Contains(parts[parts.Length - 1]) && ext1.Contains(parts[parts.Length - 2]))
 					{
-						WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, match));
+						suspExt = true;
+						if (logLevel >= 3)
+						{
+							WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, match));
+						}
 					}
 				}
 
@@ -561,5 +574,38 @@ namespace ProcessBouncerService
 
 			File.AppendAllText(filePath, logMessage);
 		}
+
+		private string[] DecryptFile(string inputFile)
+		{
+			string[] result;
+			byte[] dencryptedBytes = null;
+			byte[] data = File.ReadAllBytes(inputFile);
+
+			byte[] passBytes = Encoding.ASCII.GetBytes("adminIsAPassword");
+			byte[] saltBytes = Encoding.ASCII.GetBytes("adminIsAGooderPasswordThanPassword");
+
+			// create a key from the password and salt, use 32K iterations
+			var key = new Rfc2898DeriveBytes(passBytes, saltBytes, 32768);
+			using (Aes aes = new AesManaged())
+			{
+				// set the key size to 256
+				aes.KeySize = 256;
+				aes.Key = key.GetBytes(aes.KeySize / 8);
+				aes.IV = key.GetBytes(aes.BlockSize / 8);
+				using (MemoryStream ms = new MemoryStream())
+				{
+					using (CryptoStream cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Write))
+					{
+						cs.Write(data, 0, data.Length);
+						cs.Close();
+					}
+					dencryptedBytes = ms.ToArray();
+				}
+				var str = System.Text.Encoding.Default.GetString(dencryptedBytes);
+				result = str.Split(new[] { "\r\n", "\r", "\n" },StringSplitOptions.None);
+			}
+			return result;
+		}
+
 	}
 }
