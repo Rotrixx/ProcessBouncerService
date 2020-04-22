@@ -18,10 +18,20 @@ svchost.exe,chrome.exe,devenv.exe,SearchUI.exe,SearchIndexer.exe,explorer.exe,Ms
 example.ps1
 #IntervalforBulkWritechecking(60.000=>1Min)
 120000
-#LogLevel
-#1 => JustKilledProcesses
-#2 => MoreInformationAboutJustKilledProcesses
-#3 => MostImportantInformation
-#4 => StepByStepWorkflow
-#5 => VeryDetailedForDebugging
-3
+#abcd
+#a-enable/disable 1/0 
+#b-kill/suspend/resume/ask 1/2/3/4 with gui
+#c-kill/suspend/resume 1/2/3 without gui
+#d-enable/disable log 1/0
+#Check for double Extensions
+1411
+#Check for suspicious execution path
+1411
+#Check for MD5 Hash
+1111
+#Check for suspicious Processes
+1111
+#Check for suspicious Parentprocesses
+1111
+#Debug 0 => off 1 => on
+0

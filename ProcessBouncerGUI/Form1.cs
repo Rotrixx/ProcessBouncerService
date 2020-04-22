@@ -94,11 +94,6 @@ namespace ProcessBouncerGUI
 			EncryptFile("C:\\ProcessBouncer\\config.txt","C:\\ProcessBouncer\\safeConfig.txt");
 		}
 
-		private void openConfigFile()
-		{
-			
-		}
-
 		private void blockedProcesses_SelectedIndexChanged(object sender, EventArgs e)
 		{
 
@@ -142,8 +137,8 @@ namespace ProcessBouncerGUI
 				byte[] data = File.ReadAllBytes(inputFile);
 				byte[] encryptedBytes = null;
 
-				byte[] passBytes = Encoding.ASCII.GetBytes("adminIsAPassword");
-				byte[] saltBytes = Encoding.ASCII.GetBytes("adminIsAGooderPasswordThanPassword");
+				byte[] passBytes = Encoding.ASCII.GetBytes("b1bHhco64JQ14Pg4");
+				byte[] saltBytes = Encoding.ASCII.GetBytes("xCZmKg7Kv1xpFUEdlgpXaSvJ186RvB");
 
 				var key = new Rfc2898DeriveBytes(passBytes, saltBytes, 32768);
 				// create an AES object
@@ -180,8 +175,8 @@ namespace ProcessBouncerGUI
 			byte[] dencryptedBytes = null;
 			byte[] data = File.ReadAllBytes(inputFile);
 
-			byte[] passBytes = Encoding.ASCII.GetBytes("adminIsAPassword");
-			byte[] saltBytes = Encoding.ASCII.GetBytes("adminIsAGooderPasswordThanPassword");
+			byte[] passBytes = Encoding.ASCII.GetBytes("b1bHhco64JQ14Pg4");
+			byte[] saltBytes = Encoding.ASCII.GetBytes("xCZmKg7Kv1xpFUEdlgpXaSvJ186RvB");
 
 			// create a key from the password and salt, use 32K iterations
 			var key = new Rfc2898DeriveBytes(passBytes, saltBytes, 32768);
