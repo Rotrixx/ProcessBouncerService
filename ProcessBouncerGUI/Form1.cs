@@ -82,11 +82,18 @@ namespace ProcessBouncerGUI
 
 		private void buttonEditConfig_Click(object sender, EventArgs e)
 		{
-			DecryptFile("C:\\ProcessBouncer\\safeConfig.txt","C:\\ProcessBouncer\\tmp.txt");
-			Process editor = Process.Start("C:\\ProcessBouncer\\tmp.txt");
-			editor.WaitForExit();
-			EncryptFile("C:\\ProcessBouncer\\tmp.txt","C:\\ProcessBouncer\\safeConfig.txt");
-			File.Delete("C:\\ProcessBouncer\\tmp.txt");
+			if (File.Exists(@"C:\ProcessBouncer\safeConfig.txt"))
+			{
+				DecryptFile("C:\\ProcessBouncer\\safeConfig.txt", "C:\\ProcessBouncer\\tmp.txt");
+				Process editor = Process.Start("C:\\ProcessBouncer\\tmp.txt");
+				editor.WaitForExit();
+				EncryptFile("C:\\ProcessBouncer\\tmp.txt", "C:\\ProcessBouncer\\safeConfig.txt");
+				File.Delete("C:\\ProcessBouncer\\tmp.txt");
+			}
+			else
+			{
+				Process editor = Process.Start("C:\\ProcessBouncer\\config.txt");
+			}
 		}
 
 		private void buttonTogglePopUp_Click(object sender, EventArgs e)
