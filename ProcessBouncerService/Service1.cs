@@ -40,8 +40,11 @@ namespace ProcessBouncerService
 		char[] mhc;
 		char[] spc;
 		char[] sppc;
+		char[] mdsc;
 
 		string[] sig;
+		List<string> dynSig = new List<string>();
+		string dynSigDirectory;
 
 		MessageQueue pbq;
 		MessagePriority highest = MessagePriority.Highest;
@@ -104,7 +107,7 @@ namespace ProcessBouncerService
 			//ToDo: Remove whitespaces in list like processes, ext1, ext2
 
 			var guiProc = Process.GetProcessesByName("ProcessBouncerGUI");
-			if (guiProc.Length >= 0){
+			if (guiProc.Length > 0){
 				gui = true;
 			}
 			else{
@@ -193,6 +196,12 @@ namespace ProcessBouncerService
 						sppc = line.ToCharArray(0,4);
 						break;
 					case 16:
+						dynSigDirectory = line;
+						break;
+					case 17:
+						mdsc = line.ToCharArray(0,4);
+						break;
+					case 18:
 						int debugInt = Convert.ToInt32(line);
 						if (debugInt == 1){
 							debug = true;
@@ -200,6 +209,14 @@ namespace ProcessBouncerService
 						break;
 				}
 				counter++;
+			}
+
+			//Reading dynamic signatures
+			DirectoryInfo d = new DirectoryInfo(dynSigDirectory);
+			
+			foreach (var file in d.GetFiles("*.yara"))
+			{
+      			dynSig.Add(getDynSigFromYara(file.FullName));
 			}
 
 
@@ -238,6 +255,7 @@ namespace ProcessBouncerService
 				bool mhr;
 				bool spr;
 				bool sppr;
+				bool mdsr;
 
 				//Stop when Process is whitlisted
 				if (whitelistedProcesses.Contains(procName))
@@ -305,10 +323,21 @@ namespace ProcessBouncerService
 				{
 					der = "false";
 				}
+				if (mdsc[0] == '1')
+				{
+					mdsr = dynamicSignatureFunc(cmd.ToString());
+				}
+				else
+				{
+					mdsr = false;
+				}
 
 				//Logging
 				if (mhc[3] == '1' && mhr){
 					WriteLog(String.Format("Signature found! - MALWARE! - {0}", exePath));
+				}
+				if (mdsc[3] == '1' && mdsr){
+					WriteLog(String.Format("Dynamic Signature found! - MALWARE! - {0}", cmd));
 				}
 				if (sepc[3] == '1' && sepr){
 					WriteLog(String.Format("SuspiciousExecutionPath - {0}({1}) - {2}", procName, pid, cmd));
@@ -327,10 +356,10 @@ namespace ProcessBouncerService
 				//Reaction
 				if (gui)
 				{
-					if ((mhr || sepr || der != "false" || spr || sppr) && (mhc[1] == '1' || sepc[1] == '1' || dec[1] == '1' || spc[1] == '1' || sppc[1] == '1')){
+					if ((mhr || sepr || der != "false" || spr || sppr || mdsr) && (mhc[1] == '1' || sepc[1] == '1' || dec[1] == '1' || spc[1] == '1' || sppc[1] == '1' || mdsc[1] == '1')){
 						KillProc((uint)pid);
 					}
-					else if ((mhr || sepr || der != "false" || spr || sppr) && (mhc[1] == '4' || sepc[1] == '4' || dec[1] == '4' || spc[1] == '4' || sppc[1] == '4')){
+					else if ((mhr || sepr || der != "false" || spr || sppr || mdsr) && (mhc[1] == '4' || sepc[1] == '4' || dec[1] == '4' || spc[1] == '4' || sppc[1] == '4' || mdsc[1] == '4')){
 						string userReturn = ask((uint)pid, exePath.ToString());
 						if (userReturn == "K"){
 							KillProc((uint)pid);
@@ -345,16 +374,16 @@ namespace ProcessBouncerService
 							WriteLog(String.Format("User resumed - {0}({1})", procName, pid));
 						}
 					}
-					else if ((mhr || sepr || der != "false" || spr || sppr) && (mhc[1] == '2' || sepc[1] == '2' || dec[1] == '2' || spc[1] == '2' || sppc[1] == '2')){
+					else if ((mhr || sepr || der != "false" || spr || sppr || mdsr) && (mhc[1] == '2' || sepc[1] == '2' || dec[1] == '2' || spc[1] == '2' || sppc[1] == '2')){
 						SuspendProc((uint)pid);
 					}
 				}
 				else
 				{
-					if ((mhr || sepr || der != "false" || spr || sppr) && (mhc[1] == '1' || sepc[1] == '1' || dec[1] == '1' || spc[1] == '1' || sppc[1] == '1')){
+					if ((mhr || sepr || der != "false" || spr || sppr || mdsr) && (mhc[2] == '1' || sepc[2] == '1' || dec[2] == '1' || spc[2] == '1' || sppc[2] == '1' || mdsc[2] == '1')){
 						KillProc((uint)pid);
 					}
-					else if ((mhr || sepr || der != "false" || spr || sppr) && (mhc[1] == '2' || sepc[1] == '2' || dec[1] == '2' || spc[1] == '2' || sppc[1] == '2')){
+					else if ((mhr || sepr || der != "false" || spr || sppr || mdsr) && (mhc[2] == '2' || sepc[2] == '2' || dec[2] == '2' || spc[2] == '2' || sppc[2] == '2' || mdsc[2] == '2')){
 						SuspendProc((uint)pid);
 					}
 				}
@@ -512,6 +541,34 @@ namespace ProcessBouncerService
 			return false;
 		}
 
+		private bool dynamicSignatureFunc(string cmd)
+		{
+			string PathPattern = @"[A-Z]\:\\[\w(?\\)]*.\w*";
+			MatchCollection cmdFiles = Regex.Matches(cmd, PathPattern);
+			foreach (var file in cmdFiles){
+				if (Regex.Matches(file.ToString(), @"\.txt").Count > 0)
+				{
+					FileStream fs = new FileStream(file.ToString(), FileMode.Open);
+					int hexIn;
+					String hex = "";
+
+					for (int i = 0; (hexIn = fs.ReadByte()) != -1; i++)
+					{
+						hex += string.Format("{0:X2}", hexIn);
+					}
+
+					foreach (string pattern in dynSig)
+					{
+						if (Regex.Matches(hex, pattern, RegexOptions.IgnoreCase).Count > 0)
+						{
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		}
+
 		private string CalculateMD5(string filename)
 		{
     		using (var md5 = MD5.Create())
@@ -522,6 +579,26 @@ namespace ProcessBouncerService
             		return BitConverter.ToString(hash).Replace("-", "").ToLower();
         		}
     		}
+		}
+
+		private string getDynSigFromYara(string dataFile)
+		{
+			string[] fileContent = System.IO.File.ReadAllLines(dataFile);
+			foreach (string s in fileContent)
+			{
+				if (Regex.Matches(s,@"\$img =").Count > 0)
+				{
+					string result = s.Substring(9);
+					result = result.Replace("{", string.Empty);
+					result = result.Replace("}", string.Empty);
+					result = result.Replace("-", ",");
+					result = result.Replace(" [", "[0-9a-f]{");
+					result = result.Replace("] ", "}");
+					result = result.Replace(" ",string.Empty);
+					return result;
+				}
+			}
+			return "Error";
 		}
 
 		private string ask(uint pid, string exePath){
