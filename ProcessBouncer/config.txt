@@ -16,6 +16,8 @@ C:\Windows
 svchost.exe,chrome.exe,devenv.exe,SearchUI.exe,SearchIndexer.exe,explorer.exe,MsMpEng.exe,taskhostw.exe,dllhost.exe,MicrosoftEdge.exe,ServiceHub.DataWarehouseHost.exe
 #WhitelistedScripts Note: Use full Path if possible and \\ for path instead of \
 example.ps1
+#Check for bulk writing 0 => off 1 => on
+0
 #IntervalforBulkWritechecking(60.000=>1Min)
 120000
 #abcd
@@ -33,9 +35,13 @@ example.ps1
 1111
 #Check for suspicious Parentprocesses
 1111
+#Directory for MD5Hash Signatures
+C:\ProcessBouncer\signatures
 #Directory for Yara dynamic signatures
 C:\ProcessBouncer\yara
 #Check for dynamic YARA signature
 1111
+#Check for obfuscated powershell/cmd code 0 => off 1 => on
+1
 #Debug 0 => off 1 => on
 0
