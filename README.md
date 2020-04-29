@@ -5,7 +5,7 @@ ProcessBouncerService is based on the Powershellscript ProcessBouncer (https://g
 
 ## Setup:
 * Download and extract
-* Run Install.bps1 as admin
+* Run Install.ps1 as admin
 
 ## Configuration:
 Comments start with a `#` and will be ignored. Please don't add new lines or spaces in the listings.
