@@ -30,11 +30,11 @@
         {
             this.configTab = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.buttonEditConfig = new System.Windows.Forms.Button();
             this.buttonTogglePopUp = new System.Windows.Forms.Button();
-            this.blockedProcesses = new System.Windows.Forms.ListBox();
+            this.buttonEditConfig = new System.Windows.Forms.Button();
+            this.tabPage2 = new System.Windows.Forms.TabPage();
             this.buttonAddProc = new System.Windows.Forms.Button();
+            this.blockedProcesses = new System.Windows.Forms.ListBox();
             this.configTab.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -62,6 +62,26 @@
             this.tabPage1.Text = "Config";
             this.tabPage1.UseVisualStyleBackColor = true;
             // 
+            // buttonTogglePopUp
+            // 
+            this.buttonTogglePopUp.Location = new System.Drawing.Point(356, 192);
+            this.buttonTogglePopUp.Name = "buttonTogglePopUp";
+            this.buttonTogglePopUp.Size = new System.Drawing.Size(107, 23);
+            this.buttonTogglePopUp.TabIndex = 1;
+            this.buttonTogglePopUp.Text = "Enable safeConfig";
+            this.buttonTogglePopUp.UseVisualStyleBackColor = true;
+            this.buttonTogglePopUp.Click += new System.EventHandler(this.buttonTogglePopUp_Click);
+            // 
+            // buttonEditConfig
+            // 
+            this.buttonEditConfig.Location = new System.Drawing.Point(356, 115);
+            this.buttonEditConfig.Name = "buttonEditConfig";
+            this.buttonEditConfig.Size = new System.Drawing.Size(107, 23);
+            this.buttonEditConfig.TabIndex = 0;
+            this.buttonEditConfig.Text = "Edit Config";
+            this.buttonEditConfig.UseVisualStyleBackColor = true;
+            this.buttonEditConfig.Click += new System.EventHandler(this.buttonEditConfig_Click);
+            // 
             // tabPage2
             // 
             this.tabPage2.Controls.Add(this.buttonAddProc);
@@ -74,25 +94,15 @@
             this.tabPage2.Text = "Log";
             this.tabPage2.UseVisualStyleBackColor = true;
             // 
-            // buttonEditConfig
+            // buttonAddProc
             // 
-            this.buttonEditConfig.Location = new System.Drawing.Point(356, 115);
-            this.buttonEditConfig.Name = "buttonEditConfig";
-            this.buttonEditConfig.Size = new System.Drawing.Size(100, 23);
-            this.buttonEditConfig.TabIndex = 0;
-            this.buttonEditConfig.Text = "Edit Config";
-            this.buttonEditConfig.UseVisualStyleBackColor = true;
-            this.buttonEditConfig.Click += new System.EventHandler(this.buttonEditConfig_Click);
-            // 
-            // buttonTogglePopUp
-            // 
-            this.buttonTogglePopUp.Location = new System.Drawing.Point(356, 192);
-            this.buttonTogglePopUp.Name = "buttonTogglePopUp";
-            this.buttonTogglePopUp.Size = new System.Drawing.Size(100, 23);
-            this.buttonTogglePopUp.TabIndex = 1;
-            this.buttonTogglePopUp.Text = "Toggle PupUp";
-            this.buttonTogglePopUp.UseVisualStyleBackColor = true;
-            this.buttonTogglePopUp.Click += new System.EventHandler(this.buttonTogglePopUp_Click);
+            this.buttonAddProc.Location = new System.Drawing.Point(669, 341);
+            this.buttonAddProc.Name = "buttonAddProc";
+            this.buttonAddProc.Size = new System.Drawing.Size(93, 23);
+            this.buttonAddProc.TabIndex = 2;
+            this.buttonAddProc.Text = "Add to Whitelist";
+            this.buttonAddProc.UseVisualStyleBackColor = true;
+            this.buttonAddProc.Click += new System.EventHandler(this.buttonAddProc_Click);
             // 
             // blockedProcesses
             // 
@@ -103,16 +113,6 @@
             this.blockedProcesses.TabIndex = 1;
             this.blockedProcesses.Click += new System.EventHandler(this.blockedProcesses_Click);
             this.blockedProcesses.SelectedIndexChanged += new System.EventHandler(this.blockedProcesses_SelectedIndexChanged);
-            // 
-            // buttonAddProc
-            // 
-            this.buttonAddProc.Location = new System.Drawing.Point(669, 341);
-            this.buttonAddProc.Name = "buttonAddProc";
-            this.buttonAddProc.Size = new System.Drawing.Size(93, 23);
-            this.buttonAddProc.TabIndex = 2;
-            this.buttonAddProc.Text = "Add to Whitelist";
-            this.buttonAddProc.UseVisualStyleBackColor = true;
-            this.buttonAddProc.Click += new System.EventHandler(this.buttonAddProc_Click);
             // 
             // Form1
             // 

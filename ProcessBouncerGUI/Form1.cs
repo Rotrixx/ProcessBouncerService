@@ -12,47 +12,63 @@ using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Forms;
 using Message = System.Messaging.Message;
+using static ProcessBouncerGUI.PupUp;
+using System.Diagnostics;
 
 namespace ProcessBouncerGUI
 {
 	public partial class Form1 : Form
 	{
 		MessageQueue pbq;
-		PopUp popUp;
 		MessagePriority highest = MessagePriority.Highest;
 		MessagePriority high = MessagePriority.High;
 		MessagePriority normal = MessagePriority.Normal;
 		MessagePriority low = MessagePriority.Low;
 
-		TimeSpan interval = new TimeSpan(0,0,1);
+		TimeSpan interval = new TimeSpan(0,0,1); //1 sec?
 
 		public Form1()
 		{
 			InitializeComponent();
-			if(MessageQueue.Exists(@".\private$\ProcessBouncerQueue"))
+			if(MessageQueue.Exists(@".\private$\pbq"))
 			{
-				pbq = new MessageQueue(@".\private$\ProcessBouncerQueue");
+				pbq = new MessageQueue(@".\private$\pbq");
 			}
 			else
 			{
-				pbq = MessageQueue.Create(@".\private$\ProcessBouncerQueue");
+				pbq = MessageQueue.Create(@".\private$\pbq");
 			}
 
-			
-			while (true)
+			pbq.ReceiveCompleted += new ReceiveCompletedEventHandler(QueueMessageReceived);
+			pbq.BeginReceive();
+		}
+
+		/*
+		while (true)
+		{
+			Message curr = rcvMsg(interval);
+			if(curr.Label.ToString() == "Susp")
 			{
-				Message curr = rcvMsg(interval);
-				if(curr.Label.ToString() == "Susp")
+				PupUp tmp = new PupUp();
+				tmp.Show();
+				Message response = rcvMsg(new TimeSpan(0, 1, 0));
+				if (response.Body.ToString() == "Done")
 				{
-					PopUp tmp = new PopUp();
-					tmp.Show();
+					tmp.Close();
 				}
-				else if(curr.Label.ToString() == "Bulk")
+			}
+			else if(curr.Label.ToString() == "Bulk")
+			{
+				PupUp tmp = new PupUp();
+				tmp.Show();
+				Message response = rcvMsg(new TimeSpan(0,1,0));
+				if (response.Body.ToString() == "Done")
 				{
-					PopUp tmp = new PopUp();
+					tmp.Close();
 				}
 			}
 		}
+		*/
 
 		private void buttonAddProc_Click(object sender, EventArgs e)
 		{
@@ -66,17 +82,23 @@ namespace ProcessBouncerGUI
 
 		private void buttonEditConfig_Click(object sender, EventArgs e)
 		{
-
+			if (File.Exists(@"C:\ProcessBouncer\safeConfig.txt"))
+			{
+				DecryptFile("C:\\ProcessBouncer\\safeConfig.txt", "C:\\ProcessBouncer\\tmp.txt");
+				Process editor = Process.Start("C:\\ProcessBouncer\\tmp.txt");
+				editor.WaitForExit();
+				EncryptFile("C:\\ProcessBouncer\\tmp.txt", "C:\\ProcessBouncer\\safeConfig.txt");
+				File.Delete("C:\\ProcessBouncer\\tmp.txt");
+			}
+			else
+			{
+				Process editor = Process.Start("C:\\ProcessBouncer\\config.txt");
+			}
 		}
 
 		private void buttonTogglePopUp_Click(object sender, EventArgs e)
 		{
-
-		}
-
-		private void openConfigFile()
-		{
-
+			EncryptFile("C:\\ProcessBouncer\\config.txt","C:\\ProcessBouncer\\safeConfig.txt");
 		}
 
 		private void blockedProcesses_SelectedIndexChanged(object sender, EventArgs e)
@@ -84,10 +106,9 @@ namespace ProcessBouncerGUI
 
 		}
 
-		public void sendMsg(string msg, string lbl)
+		public void sendMsg(string lbl)
 		{
 			Message message = new Message();
-			message.Body = msg;
 			message.Label = lbl;
 			pbq.Send(message);
 			return;
@@ -104,7 +125,9 @@ namespace ProcessBouncerGUI
 			}
 			catch (MessageQueueException e)
 			{
-				
+				Console.WriteLine(e.Message);
+				Console.WriteLine(e.ErrorCode);
+				Console.WriteLine(e.MessageQueueErrorCode);
 			}
 			catch (InvalidOperationException e)
 			{
@@ -114,67 +137,106 @@ namespace ProcessBouncerGUI
 			return empty;
 		}
 
-		//Source: https://www.codeproject.com/articles/26085/file-encryption-and-decryption-in-c
 		private void EncryptFile(string inputFile, string outputFile)
 		{
 			try
 			{
-				string password = @"8e4wttmVgeMPmjd_Zdf#NJ-!Q"; // Your Key Here
-				UnicodeEncoding UE = new UnicodeEncoding();
-				byte[] key = UE.GetBytes(password);
+				byte[] data = File.ReadAllBytes(inputFile);
+				byte[] encryptedBytes = null;
 
-				string cryptFile = outputFile;
-				FileStream fsCrypt = new FileStream(cryptFile, FileMode.Create);
+				byte[] passBytes = Encoding.ASCII.GetBytes("b1bHhco64JQ14Pg4");
+				byte[] saltBytes = Encoding.ASCII.GetBytes("xCZmKg7Kv1xpFUEdlgpXaSvJ186RvB");
 
-				RijndaelManaged RMCrypto = new RijndaelManaged();
-
-				CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateEncryptor(key, key), CryptoStreamMode.Write);
-
-				FileStream fsIn = new FileStream(inputFile, FileMode.Open);
-
-				int data;
-				while ((data = fsIn.ReadByte()) != -1)
+				var key = new Rfc2898DeriveBytes(passBytes, saltBytes, 32768);
+				// create an AES object
+				using (Aes aes = new AesManaged())
 				{
-					cs.WriteByte((byte)data);
+					// set the key size to 256
+					aes.KeySize = 256;
+					aes.Key = key.GetBytes(aes.KeySize / 8);
+					aes.IV = key.GetBytes(aes.BlockSize / 8);
+					using (MemoryStream ms = new MemoryStream())
+					{
+						using (CryptoStream cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
+						{
+							cs.Write(data, 0, data.Length);
+							cs.Close();
+						}
+						encryptedBytes = ms.ToArray();
+					}
 				}
-
-				fsIn.Close();
-				cs.Close();
-				fsCrypt.Close();
+				using (var fs = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
+				{
+					fs.Write(encryptedBytes, 0, encryptedBytes.Length);
+				}
 			}
-			catch
+			catch (Exception e)
 			{
 				MessageBox.Show("Encryption failed!", "Error");
+				Console.WriteLine(e.Message);
 			}
 		}
 
-		//Source: https://www.codeproject.com/articles/26085/file-encryption-and-decryption-in-c
 		private void DecryptFile(string inputFile, string outputFile)
 		{
+			byte[] dencryptedBytes = null;
+			byte[] data = File.ReadAllBytes(inputFile);
+
+			byte[] passBytes = Encoding.ASCII.GetBytes("b1bHhco64JQ14Pg4");
+			byte[] saltBytes = Encoding.ASCII.GetBytes("xCZmKg7Kv1xpFUEdlgpXaSvJ186RvB");
+
+			// create a key from the password and salt, use 32K iterations
+			var key = new Rfc2898DeriveBytes(passBytes, saltBytes, 32768);
+			using (Aes aes = new AesManaged())
 			{
-				string password = @"8e4wttmVgeMPmjd_Zdf#NJ-!Q"; // Your Key Here
-
-				UnicodeEncoding UE = new UnicodeEncoding();
-				byte[] key = UE.GetBytes(password);
-
-				FileStream fsCrypt = new FileStream(inputFile, FileMode.Open);
-
-				RijndaelManaged RMCrypto = new RijndaelManaged();
-
-				CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateDecryptor(key, key), CryptoStreamMode.Read);
-
-				FileStream fsOut = new FileStream(outputFile, FileMode.Create);
-
-				int data;
-				while ((data = cs.ReadByte()) != -1)
+				// set the key size to 256
+				aes.KeySize = 256;
+				aes.Key = key.GetBytes(aes.KeySize / 8);
+				aes.IV = key.GetBytes(aes.BlockSize / 8);
+				using (MemoryStream ms = new MemoryStream())
 				{
-					fsOut.WriteByte((byte)data);
+					using (CryptoStream cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Write))
+					{
+						cs.Write(data, 0, data.Length);
+						cs.Close();
+					}
+					dencryptedBytes = ms.ToArray();
 				}
-
-				fsOut.Close();
-				cs.Close();
-				fsCrypt.Close();
+				using (var fs = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
+				{
+					fs.Write(dencryptedBytes, 0, dencryptedBytes.Length);
+				}
 			}
+		}
+
+		private void QueueMessageReceived(Object source, ReceiveCompletedEventArgs asyncResult)
+		{
+			MessageQueue mq = (MessageQueue)source;
+
+			//once a message is received, stop receiving
+			Message curr = mq.EndReceive(asyncResult.AsyncResult);
+
+			PupUp temp = new PupUp();
+			temp.LblText = curr.Label.ToString();
+			DialogResult result =  temp.ShowDialog();
+
+			if (result == DialogResult.Yes)
+			{
+				sendMsg("R");
+			}
+			else if (result == DialogResult.No)
+			{
+				sendMsg("K");
+			}
+			else if (result == DialogResult.Ignore)
+			{
+				sendMsg("S");
+			}
+			temp.Dispose();
+
+			//begin receiving again
+			mq.BeginReceive();
+			return;
 		}
 
 	}
