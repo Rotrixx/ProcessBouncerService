@@ -14,6 +14,7 @@ using System.Management;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Messaging;
+using System.Text;
 
 namespace ProcessBouncerService
 {
@@ -30,9 +31,23 @@ namespace ProcessBouncerService
 		string[] whitelistedPath;
 		string[] whitelistedProcesses;
 		string[] whitelistedScripts;
-		int logLevel;
 
-		string[] sig;
+		bool debug = false;
+		bool bulkCheck = false;
+		bool checkObfuscation = false;
+		bool gui;
+
+		char[] dec;
+		char[] sepc;
+		char[] mhc;
+		char[] spc;
+		char[] sppc;
+		char[] mdsc;
+
+		List<string> sig = new List<string>();
+		List<string> dynSig = new List<string>();
+		string dynSigDirectory;
+		string sigDirectory;
 
 		MessageQueue pbq;
 		MessagePriority highest = MessagePriority.Highest;
@@ -82,6 +97,7 @@ namespace ProcessBouncerService
 
 		protected override void OnStart(string[] args)
 		{
+			logPath = @"C:\ProcessBouncer";
 			//ToDo 
 			/*
 			if not whitlelistFile{
@@ -93,24 +109,39 @@ namespace ProcessBouncerService
 			*/
 
 			//ToDo: Remove whitespaces in list like processes, ext1, ext2
-			
-			/*
-			if(MessageQueue.Exists(@".\private$\ProcessBouncerQueue"))
-			{
-				pbq = new MessageQueue(@".\private$\ProcessBouncerQueue");
-			}
-			else
-			{
-				pbq = MessageQueue.Create(@".\private$\ProcessBouncerQueue");
-			}
-			*/
 
-			//Reading Signatures
-			sig = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\sig");
+			var guiProc = Process.GetProcessesByName("ProcessBouncerGUI");
+			if (guiProc.Length > 0){
+				gui = true;
+			}
+			else{
+				gui = false;
+			}
+			
+			if (gui)
+			{
+				if(MessageQueue.Exists(@".\private$\pbq"))
+				{
+					pbq = new MessageQueue(@".\private$\pbq");
+				}
+				else
+				{
+					pbq = MessageQueue.Create(@".\private$\pbq");
+				}
+			}
 
 			//Reading ConfigFile
 			int counter = 1;
-			string[] lines = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\config.txt");
+			string[] lines;
+			if (File.Exists(@"C:\ProcessBouncer\safeConfig.txt"))
+			{
+				lines = DecryptFile(@"C:\ProcessBouncer\safeConfig.txt");
+			}
+			else
+			{
+				lines = System.IO.File.ReadAllLines(@"C:\ProcessBouncer\config.txt");
+			}
+
 			foreach(string line in lines)
 			{
 				if(line.StartsWith("#"))
@@ -148,15 +179,69 @@ namespace ProcessBouncerService
 						whitelistedScripts = line.Split(',');
 						break;
 					case 10:
-						intervalBulk = Convert.ToInt32(line);
+						int bulkCheckInt = Convert.ToInt32(line);
+						if (bulkCheckInt == 1){
+							bulkCheck = true;
+						}
 						break;
 					case 11:
-						logLevel = Convert.ToInt32(line);
+						intervalBulk = Convert.ToInt32(line);
+						break;
+					case 12:
+						dec = line.ToCharArray(0,4);
+						break;
+					case 13:
+						sepc = line.ToCharArray(0,4);
+						break;
+					case 14:
+						mhc = line.ToCharArray(0,4);
+						break;
+					case 15:
+						spc = line.ToCharArray(0,4);
+						break;
+					case 16:
+						sppc = line.ToCharArray(0,4);
+						break;
+					case 17:
+						sigDirectory = line;
+						break;
+					case 18:
+						dynSigDirectory = line;
+						break;
+					case 19:
+						mdsc = line.ToCharArray(0,4);
+						break;
+					case 20:
+						int obfusInt = Convert.ToInt32(line);
+						if (obfusInt == 1){
+							checkObfuscation = true;
+						}
+						break;
+					case 21:
+						int debugInt = Convert.ToInt32(line);
+						if (debugInt == 1){
+							debug = true;
+						}
 						break;
 				}
 				counter++;
 			}
 
+			//Reading Signatures
+			DirectoryInfo dSig = new DirectoryInfo(sigDirectory);
+		
+			foreach (var file in dSig.GetFiles())
+			{
+      			getSigHash(file.FullName);
+			}
+
+			//Reading dynamic signatures
+			DirectoryInfo dDynSig = new DirectoryInfo(dynSigDirectory);
+			
+			foreach (var file in dDynSig.GetFiles("*.yara"))
+			{
+      			dynSig.Add(getDynSigFromYara(file.FullName));
+			}
 
 			WriteLog("Service has been started");
 			//Watch for newly started Processes
@@ -165,9 +250,12 @@ namespace ProcessBouncerService
 			eventWatcher.Start();
 
 			//Check for bilk writing with a timer
-			timerBulk.Elapsed += new ElapsedEventHandler(CheckTransferProcess);
-			timerBulk.Interval = intervalBulk;
-			timerBulk.Enabled = true;
+			if (bulkCheck)
+			{
+				timerBulk.Elapsed += new ElapsedEventHandler(CheckTransferProcess);
+				timerBulk.Interval = intervalBulk;
+				timerBulk.Enabled = true;
+			}
 		}
 
 		private void CheckProcess(object sender, EventArrivedEventArgs e)
@@ -185,11 +273,16 @@ namespace ProcessBouncerService
 				object cmd = tmp.Properties["CommandLine"].Value;
 				object exePath = tmp.Properties["ExecutablePath"].Value;
 				object name = tmp.Properties["Name"].Value;
-				string parentProcName = "";
 
-				bool suspExePath = false;
-				bool suspExt = false;
 				bool whitelistedScript = false;
+
+				string der;
+				bool sepr;
+				bool mhr;
+				bool spr;
+				bool sppr;
+				bool mdsr;
+				bool obfus;
 
 				//Stop when Process is whitlisted
 				if (whitelistedProcesses.Contains(procName))
@@ -212,136 +305,138 @@ namespace ProcessBouncerService
 					break;
 				}
 
-				if (logLevel >= 4)
+				if (debug)
 				{
 					WriteLog(String.Format("Checking - {0}({1})", procName, pid));
 				}
 
-				// Suspend newly created Process till it was checked
-				//Problems at startup?
-				//SuspendProc((uint)pid);
-
-				//Check for suspicous Path
-				foreach (string s in suspiciousExePath)
+				//Checking
+				if (spc[0] == '1'){
+					spr = suspiciousProcessFunc(procName.ToString(), name.ToString());
+				}
+				else
 				{
-					string pattern = String.Format(@"{0}", s);
-					MatchCollection tmpMatch = Regex.Matches(cmd.ToString(), pattern);
-					if (tmpMatch.Count > 0)
-					{
-						suspExePath = true;
-						if (logLevel >= 3)
-						{
-							WriteLog(String.Format("SuspiciousExecutionPath - {0}({1}) - {2}", procName, pid, cmd));
-						}
-					}
+					spr = false;
+				}
+				if (sppc[0] == '1')
+				{
+					sppr = suspiciousParentProcessFunc((uint)ppid);
+				}
+				else
+				{
+					sppr = false;
+				}
+				if (mhc[0] == '1')
+				{
+					mhr = maliciousHashFunc(exePath.ToString());
+				}
+				else
+				{
+					mhr = false;
+				}
+				if (sepc[0] == '1')
+				{
+					sepr = suspiciousExePathFunc(cmd.ToString());
+				}
+				else
+				{
+					sepr = false;
+				}
+				if (dec[0] == '1')
+				{
+					der = doubleExtFunc(cmd.ToString());
+				}
+				else
+				{
+					der = "false";
+				}
+				if (mdsc[0] == '1')
+				{
+					mdsr = dynamicSignatureFunc(cmd.ToString());
+				}
+				else
+				{
+					mdsr = false;
+				}
+				if (checkObfuscation)
+				{
+					obfus = checkObfuscationFunc(cmd.ToString());
+				}
+				else
+				{
+					obfus = false;
 				}
 
-				//Check for double Extensions
-				string doubleExtPattern = @"\\[A-Za-z0-9]*\.[A-Za-z0-9]*\.[A-Za-z0-9]*(?!\.)\b";
-				//May have problems with some Windows directories
-				foreach(Match match in Regex.Matches(cmd.ToString(),doubleExtPattern))
-				{
-					suspExt = true;
-					if (logLevel >= 3)
-					{
-						WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, match));
-					}
-				}
-
-				//Check Hash of exe file
-				//var watch = System.Diagnostics.Stopwatch.StartNew();
-				string suspMD5 = CalculateMD5(exePath.ToString());
-				if (sig.Contains(suspMD5))
-				{
+				//Logging
+				if (mhc[3] == '1' && mhr){
 					WriteLog(String.Format("Signature found! - MALWARE! - {0}", exePath));
-					KillProc((uint)pid);
-					return;
 				}
-				//watch.Stop();
-				//var elapsedMs = watch.ElapsedMilliseconds;
-				//if(logLevel >= 5) WriteLog(String.Format("Checked {0} Hashes in {1} Milliseconds", sig.Length, elapsedMs));
-
-				//Check for blacklisted/suspicous Processes by name
-				if (suspicious.Contains(procName) || suspicious.Contains(name))
+				if (mdsc[3] == '1' && mdsr){
+					WriteLog(String.Format("Dynamic Signature found! - MALWARE! - {0}", cmd));
+				}
+				if (sepc[3] == '1' && sepr){
+					WriteLog(String.Format("SuspiciousExecutionPath - {0}({1}) - {2}", procName, pid, cmd));
+				}
+				if (dec[3] == '1' && der != "false"){
+					WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, der));
+				}
+				if (spc[3] == '1' && spr)
 				{
-					bool suspParent = false;
-					WqlObjectQuery parentQuery = new WqlObjectQuery(String.Format("SELECT Caption FROM Win32_Process WHERE ProcessId={0}", ppid));
-					ManagementObjectSearcher searcherParent = new ManagementObjectSearcher(parentQuery);
-					ManagementObjectCollection collectionParent = searcherParent.Get();
-					foreach (ManagementObject tmpParent in collectionParent)
-					{
-						parentProcName = tmpParent.Properties["Caption"].ToString();
-						if (suspiciousParents.Contains(parentProcName))
-						{
-							suspParent = true;
-						}
-					}
-					if (suspParent)
-					{
-						//ToDo
-						//Add recursion for indirect parents
-						WriteLog(String.Format("SuspiciousProcess - {0}({2}) - started from - {1}({3})", procName, parentProcName, pid, ppid));
-						if (logLevel >= 3)
-						{
-							WriteLog(String.Format("KillingProcess - {0}", pid));
-						}
-						KillProc((uint)pid);
-						KillProc((uint)ppid);
-						return;
-					}
-
-					WriteLog(String.Format("SuspiciousProcessStarted - {0}({1})", procName, pid));
-					if (logLevel >= 3)
-					{
-						WriteLog(String.Format("KillingProcess - {0}", pid));
-					}
-					KillProc((uint)pid);
-					return;
+					WriteLog(String.Format("SuspiciousProcess - {0}({1})", procName, pid));
+				}
+				if (sppc[3] == '1' && sppr){
+					WriteLog(String.Format("SuspiciousProcess - {0}({1}) - started from - ({2})", procName, pid, ppid));
+				}
+				if (obfus){
+					WriteLog("Obfuscated cmdLine");
 				}
 
-				/*
-				if(suspExePath || suspExt){
-					sendMsg(exePath.ToString(), "Susp");
-					Message userRet = rcvMsg();
-					if(userRet.Body.ToString() == "R" && userRet.Label.ToString() == "Susp")
-					{
-						WriteLog(String.Format("User resumed {0}({1})", procName, pid));
-						ResumeProc((uint)pid);
-						return;
-					}
-					else if(userRet.Body.ToString() == "K" && userRet.Label.ToString() == "Susp")
-					{
-						WriteLog(String.Format("User killed {0}({1})", procName, pid));
+				//Reaction
+				if (gui)
+				{
+					if ((mhc[1] == '1' && mhr) || (mdsc[1] == '1' && mdsr) || (sepc[1] == '1' && sepr) || (dec[1] == '1' && der != "false") || (spc[1] == '1' && spr) || (sppc[1] == '1' && sppr)){
 						KillProc((uint)pid);
-						return;
 					}
-					else if(userRet.Body.ToString() == "S" && userRet.Label.ToString() == "Susp")
-					{
-						WriteLog(String.Format("User keeps suspending {0}({1})", procName, pid));
-						KillProc((uint)pid);
-						return;
+					else if ((mhc[1] == '4' && mhr) || (mdsc[1] == '4' && mdsr) || (sepc[1] == '4' && sepr) || (dec[1] == '4' && der != "false") || (spc[1] == '4' && spr) || (sppc[1] == '4' && sppr)){
+						string userReturn = ask((uint)pid, exePath.ToString());
+						if (userReturn == "K"){
+							KillProc((uint)pid);
+							WriteLog(String.Format("User killed - {0}({1})", procName, pid));
+						}
+						else if (userReturn == "S"){
+							SuspendProc((uint)pid);
+							WriteLog(String.Format("User suspends - {0}({1})", procName, pid));
+						}
+						else if (userReturn == "R"){
+							ResumeProc((uint)pid);
+							WriteLog(String.Format("User resumed - {0}({1})", procName, pid));
+						}
 					}
-					else
-					{
-						WriteLog("No Time!");
+					else if ((mhc[1] == '2' && mhr) || (mdsc[1] == '2' && mdsr) || (sepc[1] == '2' && sepr) || (dec[1] == '2' && der != "false") || (spc[1] == '2' && spr) || (sppc[1] == '2' && sppr)){
+						SuspendProc((uint)pid);
 					}
 				}
-				*/
+				else
+				{
+					if ((mhc[2] == '1' && mhr) || (mdsc[2] == '1' && mdsr) || (sepc[2] == '1' && sepr) || (dec[2] == '1' && der != "false") || (spc[2] == '1' && spr) || (sppc[2] == '1' && sppr)){
+						KillProc((uint)pid);
+					}
+					else if ((mhc[2] == '2' && mhr) || (mdsc[2] == '2' && mdsr) || (sepc[2] == '2' && sepr) || (dec[2] == '2' && der != "false") || (spc[2] == '2' && spr) || (sppc[2] == '2' && sppr)){
+						SuspendProc((uint)pid);
+					}
+				}
 
-				if (logLevel >= 5)
+				if (debug)
 				{
 					WriteLog(String.Format("All Good! - {0}({1})", procName, pid));
 				}
-
-				// Resume Process if Process is not malicous
-				//ResumeProc((uint)pid);
 			}
 			return;
 		}
 
 		private void CheckTransferProcess(object source, ElapsedEventArgs e)
 		{
-			if (logLevel >= 5)
+			if (debug)
 			{
 				WriteLog("Checking BulkWriting");
 			}
@@ -382,35 +477,131 @@ namespace ProcessBouncerService
 				}
 
 				//ToDo
-				//SuspendProc((uint)pid);
+				SuspendProc((uint)pid);
 				WriteLog(String.Format("{0}({1}) does bulk writing", procName, pid));
-				/*
-				sendMsg(String.Format("{0}", exePath),"Bulk");
-				Message userRet = rcvMsg();
-				if(userRet.Body.ToString() == "R" && userRet.Body.ToString() == "Bulk")
+				if (gui)
 				{
-					WriteLog(String.Format("User resumed {0}({1})", procName, pid));
-					ResumeProc((uint)pid);
-					return;
+					string userReturn = ask((uint)pid, procName.ToString());
+					if (userReturn == "K"){
+						KillProc((uint)pid);
+						WriteLog(String.Format("User killed - {0}({1})", procName, pid));
+					}
+					else if (userReturn == "S"){
+						SuspendProc((uint)pid);
+						WriteLog(String.Format("User suspends - {0}({1})", procName, pid));
+					}
+					else if (userReturn == "R"){
+						ResumeProc((uint)pid);
+						WriteLog(String.Format("User resumed - {0}({1})", procName, pid));
+					}
 				}
-				else if(userRet.Body.ToString() == "K" && userRet.Body.ToString() == "Bulk")
-				{
-					WriteLog(String.Format("User killed {0}({1})", procName, pid));
+				else{
 					KillProc((uint)pid);
-					return;
 				}
-				else if(userRet.Body.ToString() == "S" && userRet.Body.ToString() == "Bulk")
+			}
+			return;
+		}
+
+		private bool suspiciousExePathFunc(string cmd)
+		{
+			foreach (string s in suspiciousExePath)
+			{
+				string pattern = String.Format(@"{0}", s);
+				MatchCollection tmpMatch = Regex.Matches(cmd, pattern);
+				if (tmpMatch.Count > 0)
 				{
-					WriteLog(String.Format("User keeps suspending {0}({1})", procName, pid));
-					KillProc((uint)pid);
-					return;
+					return true;
 				}
-				else
+			}
+			return false;
+		}
+
+		//Checking for double Extensions like evil.doc.exe
+		private string doubleExtFunc(string cmd)
+		{
+			string doubleExtPattern = @"\\[A-Za-z0-9]*\.[A-Za-z0-9]*\.[A-Za-z0-9]*(?!\.)\b";
+			foreach(Match match in Regex.Matches(cmd,doubleExtPattern))
+			{
+				string[] parts = match.ToString().Split('.');
+				if (ext2.Contains(parts[parts.Length - 1]) && ext1.Contains(parts[parts.Length - 2]))
 				{
-					WriteLog("No Time!");
+					return match.ToString();
 				}
-				//KillProc((uint)pid);
-				*/
+			}
+			return "false";
+		}
+
+		private bool suspiciousProcessFunc(string procName, string name)
+		{
+			if (suspicious.Contains(procName) || suspicious.Contains(name))
+			{
+				return true;
+			}
+			return false;
+		}
+
+		private bool suspiciousParentProcessFunc(uint ppid)
+		{
+			WqlObjectQuery parentQuery = new WqlObjectQuery(String.Format("SELECT Caption FROM Win32_Process WHERE ProcessId={0}", ppid));
+			ManagementObjectSearcher searcherParent = new ManagementObjectSearcher(parentQuery);
+			ManagementObjectCollection collectionParent = searcherParent.Get();
+			string parentProcName = "";
+			foreach (ManagementObject tmpParent in collectionParent)
+			{
+				parentProcName = tmpParent.Properties["Caption"].ToString();
+				if (suspiciousParents.Contains(parentProcName))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		//Checking for a known malware signature
+		private bool maliciousHashFunc(string exePath)
+		{
+			string suspMD5 = CalculateMD5(exePath);
+			if (sig.Contains(suspMD5))
+			{
+				return true;
+			}
+			return false;
+		}
+
+		private bool dynamicSignatureFunc(string cmd)
+		{
+			string PathPattern = @"[A-Z]\:\\[\w(?\\)]*.\w*";
+			MatchCollection cmdFiles = Regex.Matches(cmd, PathPattern);
+			foreach (var file in cmdFiles){
+				if (Regex.Matches(file.ToString(), @"\.txt").Count > 0)
+				{
+					FileStream fs = new FileStream(file.ToString(), FileMode.Open);
+					int hexIn;
+					String hex = "";
+
+					for (int i = 0; (hexIn = fs.ReadByte()) != -1; i++)
+					{
+						hex += string.Format("{0:X2}", hexIn);
+					}
+
+					foreach (string pattern in dynSig)
+					{
+						if (Regex.Matches(hex, pattern, RegexOptions.IgnoreCase).Count > 0)
+						{
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		}
+
+		private void getSigHash(string filename)
+		{
+			string[] fileContent = System.IO.File.ReadAllLines(filename);
+			foreach(string s in fileContent)
+			{
+				sig.Add(s);
 			}
 			return;
 		}
@@ -427,12 +618,51 @@ namespace ProcessBouncerService
     		}
 		}
 
-		private void sendMsg(string msg, string lbl)
+		private string getDynSigFromYara(string dataFile)
+		{
+			string[] fileContent = System.IO.File.ReadAllLines(dataFile);
+			foreach (string s in fileContent)
+			{
+				if (Regex.Matches(s,@"\$img =").Count > 0)
+				{
+					string result = s.Substring(9);
+					result = result.Replace("{", string.Empty);
+					result = result.Replace("}", string.Empty);
+					result = result.Replace("-", ",");
+					result = result.Replace(" [", "[0-9a-f]{");
+					result = result.Replace("] ", "}");
+					result = result.Replace(" ",string.Empty);
+					return result;
+				}
+			}
+			return "Error";
+		}
+
+		private bool checkObfuscationFunc(string cmd)
+		{
+			//Check with Kullback-Leiber-Divergenz for informationgain
+			return false;
+		}
+
+		private string ask(uint pid, string exePath){
+			SuspendProc(pid);
+			sendMsg(exePath);
+			Message userRet = rcvMsg();
+			return userRet.Label.ToString();
+		}
+
+		private void sendMsg(string lbl)
 		{
 			Message message = new Message();
-			message.Body = msg;
 			message.Label = lbl;
-			pbq.Send(message);
+			try
+			{
+				pbq.Send(message);
+			}
+			catch (MessageQueueException e)
+			{
+				WriteLog(e.Message);
+			}
 			return;
 		}
 
@@ -466,21 +696,10 @@ namespace ProcessBouncerService
 				if (suspendProc == 0)
 				{
 					CloseHandle(maliciousProc);
-					if (logLevel >= 4)
-					{
-						WriteLog(String.Format("SuspendedProcess - {0}", procId));
-					}
+					WriteLog(String.Format("SuspendedProcess - {0}", procId));
 					return;
 				}
-				if (logLevel >= 2)
-				{
-					WriteLog(String.Format("Failed to suspend Process - {0}", procId));
-				}
 				return;
-			}
-			if (logLevel >= 2)
-			{
-				WriteLog(String.Format("Unable to open Process - {0}", procId));
 			}
 			return;
 		}
@@ -494,21 +713,10 @@ namespace ProcessBouncerService
 				if(resumProc == 0)
 				{
 					CloseHandle(benignProc);
-					if (logLevel >= 4)
-					{
-						WriteLog(String.Format("ResumedProcess - {0}", procId));
-					}
+					WriteLog(String.Format("ResumedProcess - {0}", procId));
 					return;
 				}
-				if (logLevel >= 2)
-				{
-					WriteLog(String.Format("Failed to resume Process - {0}", procId));
-				}
 				return;
-			}
-			if (logLevel >= 2)
-			{
-				WriteLog(String.Format("Unable to open Process - {0}", procId));
 			}
 			return;
 		}
@@ -525,18 +733,9 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("KilledProcess - {0}", procId));
 					return;
 				}
-				if (logLevel >= 2)
-				{
-					WriteLog(String.Format("Failed to kill Process - {0}", procId));
-				}
 				return;
 			}
-			if (logLevel >= 2)
-			{
-				WriteLog(String.Format("Unable to open Process - {0}", procId));
-			}
 			return;
-
 		}
 
 		protected override void OnStop()
@@ -558,5 +757,38 @@ namespace ProcessBouncerService
 
 			File.AppendAllText(filePath, logMessage);
 		}
+
+		private string[] DecryptFile(string inputFile)
+		{
+			string[] result;
+			byte[] dencryptedBytes = null;
+			byte[] data = File.ReadAllBytes(inputFile);
+
+			byte[] passBytes = Encoding.ASCII.GetBytes("b1bHhco64JQ14Pg4");
+			byte[] saltBytes = Encoding.ASCII.GetBytes("xCZmKg7Kv1xpFUEdlgpXaSvJ186RvB");
+
+			// create a key from the password and salt, use 32K iterations
+			var key = new Rfc2898DeriveBytes(passBytes, saltBytes, 32768);
+			using (Aes aes = new AesManaged())
+			{
+				// set the key size to 256
+				aes.KeySize = 256;
+				aes.Key = key.GetBytes(aes.KeySize / 8);
+				aes.IV = key.GetBytes(aes.BlockSize / 8);
+				using (MemoryStream ms = new MemoryStream())
+				{
+					using (CryptoStream cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Write))
+					{
+						cs.Write(data, 0, data.Length);
+						cs.Close();
+					}
+					dencryptedBytes = ms.ToArray();
+				}
+				var str = System.Text.Encoding.Default.GetString(dencryptedBytes);
+				result = str.Split(new[] { "\r\n", "\r", "\n" },StringSplitOptions.None);
+			}
+			return result;
+		}
+
 	}
 }

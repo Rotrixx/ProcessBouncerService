@@ -1,7 +1,7 @@
 #logPath
 C:\ProcessBouncer
 #suspicious Processes and Living of the Land Tools
-powershell.exe,cmd.exe,regedit.exe,cmd,powershell,msiexec.exe,certutil.exe,bitadmin.exe,psexec.exe,winexesvc,remcos.exe,wscript.exe,cscript.exe,reg.exe,sc.exe,netsh,whoami,copy,net,tasklist,schtasks,streams.exe
+powershell.exe,cmd.exe,regedit.exe,cmd,powershell,msiexec.exe,certutil.exe,bitadmin.exe,psexec.exe,winexesvc,remcos.exe,wscript.exe,cscript.exe,reg.exe,sc.exe,netsh,whoami,copy,net,tasklist,schtasks,streams.exe,regasm.exe,regasm,msbuild.exe,msbuild,regsvcs.exe,regsvcs,schtasks.exe,schtasks,attrib.exe,attrib
 #suspiciousParentProcesses
 WINWORD.EXE,EXCEL.EXE,POWERPNT.EXE,powershell.exe,cmd.exe,WINWORD,EXCEL,POWERPNT,cmd,powershell
 #suspiciousExecutionPaths Note: use \\ for path instead of \
@@ -14,14 +14,34 @@ exe,com,ps1,dll,bat,pif
 C:\Windows
 #WhitelistedProcesses
 svchost.exe,chrome.exe,devenv.exe,SearchUI.exe,SearchIndexer.exe,explorer.exe,MsMpEng.exe,taskhostw.exe,dllhost.exe,MicrosoftEdge.exe,ServiceHub.DataWarehouseHost.exe
-#WhitelistedScripts Note: Use full Path if possibleand \\ for path instead of \
+#WhitelistedScripts Note: Use full Path if possible and \\ for path instead of \
 example.ps1
+#Check for bulk writing 0 => off 1 => on
+0
 #IntervalforBulkWritechecking(60.000=>1Min)
 120000
-#LogLevel
-#1 => JustKilledProcesses
-#2 => MoreInformationAboutJustKilledProcesses
-#3 => MostImportantInformation
-#4 => StepByStepWorkflow
-#5 => VeryDetailedForDebugging
-3
+#abcd
+#a-enable/disable 1/0 
+#b-kill/suspend/resume/ask 1/2/3/4 with gui
+#c-kill/suspend/resume 1/2/3 without gui
+#d-enable/disable log 1/0
+#Check for double Extensions
+1411
+#Check for suspicious execution path
+1411
+#Check for MD5 Hash
+1111
+#Check for suspicious Processes
+1111
+#Check for suspicious Parentprocesses
+1111
+#Directory for MD5Hash Signatures
+C:\ProcessBouncer\signatures
+#Directory for Yara dynamic signatures
+C:\ProcessBouncer\yara
+#Check for dynamic YARA signature
+1111
+#Check for obfuscated powershell/cmd code 0 => off 1 => on
+1
+#Debug 0 => off 1 => on
+0

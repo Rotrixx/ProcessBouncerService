@@ -11,44 +11,40 @@ using System.Windows.Forms;
 
 namespace ProcessBouncerGUI
 {
-    public partial class PupUp : Form
-    {
-        MessageQueue pbq;
-        public PupUp()
-        {
-            InitializeComponent();
-            if (MessageQueue.Exists(@".\private$\ProcessBouncerQueue"))
-            {
-                pbq = new MessageQueue(@".\private$\ProcessBouncerQueue");
-            }
-            else
-            {
-                pbq = MessageQueue.Create(@".\private$\ProcessBouncerQueue");
-            }
-        }
+	public partial class PupUp : Form
+	{
+		MessageQueue pbq;
+		DialogResult returnValueFromUser;
 
-        private void buttonKill_Click(object sender, EventArgs e)
-        {
-            sendMsg("K", "Susp");
-        }
+		public PupUp()
+		{
+			InitializeComponent();
+			
+			MessageQueue pbq = new MessageQueue(@".\private$\ProcessBouncerQueue");
+		}
 
-        private void buttonSuspend_Click(object sender, EventArgs e)
-        {
-            sendMsg("S", "Susp");
-        }
+		public string LblText
+		{
+			get
+			{
+				return this.labelDynamic.Text;
+			}
+			set
+			{
+				this.labelDynamic.Text = value;
+			}
+		}
 
-        private void buttonResume_Click(object sender, EventArgs e)
-        {
-            sendMsg("R", "Susp");
-        }
-
-        public void sendMsg(string msg, string lbl)
-        {
-            System.Messaging.Message message = new System.Messaging.Message();
-            message.Body = msg;
-            message.Label = lbl;
-            pbq.Send(message);
-            return;
-        }
-    }
+		public string MsgText
+		{
+			get
+			{
+				return this.labelStatic.Text;
+			}
+			set
+			{
+				this.labelStatic.Text = value;
+			}
+		}
+	}
 }
