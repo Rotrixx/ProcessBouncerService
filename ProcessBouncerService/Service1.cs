@@ -15,6 +15,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Messaging;
 using System.Text;
+using System.Threading;
 
 namespace ProcessBouncerService
 {
@@ -36,6 +37,7 @@ namespace ProcessBouncerService
 		bool bulkCheck = false;
 		bool checkObfuscation = false;
 		bool gui;
+		bool guiAtStartUp;
 
 		char[] dec;
 		char[] sepc;
@@ -50,12 +52,11 @@ namespace ProcessBouncerService
 		string sigDirectory;
 
 		MessageQueue pbq;
-		MessagePriority highest = MessagePriority.Highest;
-		MessagePriority high = MessagePriority.High;
-		MessagePriority normal = MessagePriority.Normal;
-		MessagePriority low = MessagePriority.Low;
 
-		Timer timerBulk = new Timer();
+		BackgroundWorker backgroundWorker1 = new BackgroundWorker();
+		BackgroundWorker backgroundWorker2 = new BackgroundWorker();
+
+		System.Timers.Timer timerBulk = new System.Timers.Timer();
 		int intervalBulk;
 
 		[Flags]
@@ -113,9 +114,11 @@ namespace ProcessBouncerService
 			var guiProc = Process.GetProcessesByName("ProcessBouncerGUI");
 			if (guiProc.Length > 0){
 				gui = true;
+				guiAtStartUp = true;
 			}
 			else{
 				gui = false;
+				guiAtStartUp = false;
 			}
 			
 			if (gui)
@@ -227,12 +230,15 @@ namespace ProcessBouncerService
 				counter++;
 			}
 
+			backgroundWorker1.DoWork += CheckProcess;
+			backgroundWorker2.DoWork += CheckProcess;
+
 			//Reading Signatures
 			DirectoryInfo dSig = new DirectoryInfo(sigDirectory);
 		
 			foreach (var file in dSig.GetFiles())
 			{
-      			getSigHash(file.FullName);
+				getSigHash(file.FullName);
 			}
 
 			//Reading dynamic signatures
@@ -240,13 +246,13 @@ namespace ProcessBouncerService
 			
 			foreach (var file in dDynSig.GetFiles("*.yara"))
 			{
-      			dynSig.Add(getDynSigFromYara(file.FullName));
+				dynSig.Add(getDynSigFromYara(file.FullName));
 			}
 
 			WriteLog("Service has been started");
 			//Watch for newly started Processes
 			ManagementEventWatcher eventWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace"));
-			eventWatcher.EventArrived += new EventArrivedEventHandler(CheckProcess);
+			eventWatcher.EventArrived += new EventArrivedEventHandler(checkProcessAsync);
 			eventWatcher.Start();
 
 			//Check for bilk writing with a timer
@@ -258,14 +264,34 @@ namespace ProcessBouncerService
 			}
 		}
 
-		private void CheckProcess(object sender, EventArrivedEventArgs e)
+		private void checkProcessAsync(object sender, EventArrivedEventArgs e)
 		{
 			object pid = e.NewEvent.Properties["ProcessID"].Value;
 
+			if (backgroundWorker1.IsBusy != true)
+			{
+				WriteLog(String.Format("{0} -> Worker1", pid));
+				WriteLog(gui.ToString());
+				backgroundWorker1.RunWorkerAsync(argument: pid);
+			}
+			else if (backgroundWorker2.IsBusy != true)
+			{
+				WriteLog(String.Format("{0} -> Worker2", pid));
+				WriteLog(gui.ToString());
+				backgroundWorker2.RunWorkerAsync(argument: pid);
+			}
+			//wait till one is finished TODO
+			return;
+		}
+
+		private void CheckProcess(object sender, DoWorkEventArgs e)
+		{
+			object pid = e.Argument;
 			//Get more Information about Process from WMI
 			WqlObjectQuery query = new WqlObjectQuery(String.Format("SELECT * FROM Win32_Process WHERE ProcessId={0}", pid));
 			ManagementObjectSearcher searcher = new ManagementObjectSearcher(query);
 			ManagementObjectCollection collection = searcher.Get();
+
 			foreach (ManagementObject tmp in collection)
 			{
 				object procName = tmp.Properties["Caption"].Value;
@@ -398,6 +424,7 @@ namespace ProcessBouncerService
 						KillProc((uint)pid);
 					}
 					else if ((mhc[1] == '4' && mhr) || (mdsc[1] == '4' && mdsr) || (sepc[1] == '4' && sepr) || (dec[1] == '4' && der != "false") || (spc[1] == '4' && spr) || (sppc[1] == '4' && sppr)){
+						gui = false;
 						string userReturn = ask((uint)pid, exePath.ToString());
 						if (userReturn == "K"){
 							KillProc((uint)pid);
@@ -410,6 +437,10 @@ namespace ProcessBouncerService
 						else if (userReturn == "R"){
 							ResumeProc((uint)pid);
 							WriteLog(String.Format("User resumed - {0}({1})", procName, pid));
+						}
+						if (gui == false && guiAtStartUp == true)
+						{
+							gui = true;
 						}
 					}
 					else if ((mhc[1] == '2' && mhr) || (mdsc[1] == '2' && mdsr) || (sepc[1] == '2' && sepr) || (dec[1] == '2' && der != "false") || (spc[1] == '2' && spr) || (sppc[1] == '2' && sppr)){
@@ -608,14 +639,14 @@ namespace ProcessBouncerService
 
 		private string CalculateMD5(string filename)
 		{
-    		using (var md5 = MD5.Create())
-    		{
-        		using (var stream = File.OpenRead(filename))
-        		{
-            		var hash = md5.ComputeHash(stream);
-            		return BitConverter.ToString(hash).Replace("-", "").ToLower();
-        		}
-    		}
+			using (var md5 = MD5.Create())
+			{
+				using (var stream = File.OpenRead(filename))
+				{
+					var hash = md5.ComputeHash(stream);
+					return BitConverter.ToString(hash).Replace("-", "").ToLower();
+				}
+			}
 		}
 
 		private string getDynSigFromYara(string dataFile)
