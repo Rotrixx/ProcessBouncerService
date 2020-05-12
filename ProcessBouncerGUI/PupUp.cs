@@ -13,14 +13,9 @@ namespace ProcessBouncerGUI
 {
 	public partial class PupUp : Form
 	{
-		MessageQueue pbq;
-		DialogResult returnValueFromUser;
-
 		public PupUp()
 		{
 			InitializeComponent();
-			
-			MessageQueue pbq = new MessageQueue(@".\private$\ProcessBouncerQueue");
 		}
 
 		public string LblText

@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PupUp));
             this.buttonKill = new System.Windows.Forms.Button();
             this.buttonResume = new System.Windows.Forms.Button();
             this.buttonSuspend = new System.Windows.Forms.Button();
@@ -68,21 +69,22 @@
             // labelStatic
             // 
             this.labelStatic.AutoSize = true;
-            this.labelStatic.Location = new System.Drawing.Point(97, 61);
+            this.labelStatic.Location = new System.Drawing.Point(17, 80);
             this.labelStatic.Name = "labelStatic";
-            this.labelStatic.Size = new System.Drawing.Size(226, 26);
+            this.labelStatic.Size = new System.Drawing.Size(367, 26);
             this.labelStatic.TabIndex = 3;
-            this.labelStatic.Text = "is a suspicious Process! Do you want to \r\nResume, Kill or keep the Process Suspen" +
-    "ded?";
+            this.labelStatic.Text = "ccccccccccddddddddddccccccccccddddddddddccccccccccdddddddddd\r\nccccccccccddddddddd" +
+    "dccccccccccddddddddddccccccccccdddddddddd";
+            this.labelStatic.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
             // labelDynamic
             // 
             this.labelDynamic.AutoSize = true;
-            this.labelDynamic.Location = new System.Drawing.Point(184, 20);
+            this.labelDynamic.Location = new System.Drawing.Point(12, 9);
             this.labelDynamic.Name = "labelDynamic";
-            this.labelDynamic.Size = new System.Drawing.Size(46, 13);
+            this.labelDynamic.Size = new System.Drawing.Size(367, 52);
             this.labelDynamic.TabIndex = 4;
-            this.labelDynamic.Text = "dynamic";
+            this.labelDynamic.Text = resources.GetString("labelDynamic.Text");
             // 
             // PupUp
             // 
@@ -95,7 +97,7 @@
             this.Controls.Add(this.buttonResume);
             this.Controls.Add(this.buttonKill);
             this.Name = "PupUp";
-            this.Text = "PupUp";
+            this.Text = "ProcessBouncerService - PopUp";
             this.ResumeLayout(false);
             this.PerformLayout();
 

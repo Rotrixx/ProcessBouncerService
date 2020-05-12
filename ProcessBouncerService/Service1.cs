@@ -29,13 +29,12 @@ namespace ProcessBouncerService
 		string[] suspiciousExePath;
 		string[] ext1;
 		string[] ext2;
-		string[] whitelistedPath;
+		string[] whitelistedPaths;
 		string[] whitelistedProcesses;
 		string[] whitelistedScripts;
 
 		bool debug = false;
 		bool bulkCheck = false;
-		bool checkObfuscation = false;
 		bool gui;
 		bool guiAtStartUp;
 
@@ -45,6 +44,7 @@ namespace ProcessBouncerService
 		char[] spc;
 		char[] sppc;
 		char[] mdsc;
+		char[] obfusc;
 
 		List<string> sig = new List<string>();
 		List<string> dynSig = new List<string>();
@@ -55,9 +55,14 @@ namespace ProcessBouncerService
 
 		BackgroundWorker backgroundWorker1 = new BackgroundWorker();
 		BackgroundWorker backgroundWorker2 = new BackgroundWorker();
+		BackgroundWorker backgroundWorker3 = new BackgroundWorker();
+		BackgroundWorker backgroundWorker4 = new BackgroundWorker();
+		BackgroundWorker backgroundWorker5 = new BackgroundWorker();
 
 		System.Timers.Timer timerBulk = new System.Timers.Timer();
+		System.Timers.Timer timerRecheck = new System.Timers.Timer();
 		int intervalBulk;
+		int intervalRecheck = 300000; //5min
 
 		[Flags]
 		public enum ProcessAccess : uint
@@ -99,28 +104,19 @@ namespace ProcessBouncerService
 		protected override void OnStart(string[] args)
 		{
 			logPath = @"C:\ProcessBouncer";
-			//ToDo 
-			/*
-			if not whitlelistFile{
-				generate whitelistFile from History
-			}
-			else{
-				read whitelistFile
-			}
-			*/
-
-			//ToDo: Remove whitespaces in list like processes, ext1, ext2
 
 			var guiProc = Process.GetProcessesByName("ProcessBouncerGUI");
-			if (guiProc.Length > 0){
+			if (guiProc.Length > 0)
+			{
 				gui = true;
 				guiAtStartUp = true;
 			}
-			else{
+			else
+			{
 				gui = false;
 				guiAtStartUp = false;
 			}
-			
+
 			if (gui)
 			{
 				if(MessageQueue.Exists(@".\private$\pbq"))
@@ -173,7 +169,7 @@ namespace ProcessBouncerService
 						ext2 = line.Split(',');
 						break;
 					case 7:
-						whitelistedPath = line.Split(',');
+						whitelistedPaths = line.Split(',');
 						break;
 					case 8:
 						whitelistedProcesses = line.Split(',');
@@ -215,10 +211,7 @@ namespace ProcessBouncerService
 						mdsc = line.ToCharArray(0,4);
 						break;
 					case 20:
-						int obfusInt = Convert.ToInt32(line);
-						if (obfusInt == 1){
-							checkObfuscation = true;
-						}
+						obfusc = line.ToCharArray(0,4);
 						break;
 					case 21:
 						int debugInt = Convert.ToInt32(line);
@@ -232,6 +225,9 @@ namespace ProcessBouncerService
 
 			backgroundWorker1.DoWork += CheckProcess;
 			backgroundWorker2.DoWork += CheckProcess;
+			backgroundWorker3.DoWork += CheckProcess;
+			backgroundWorker4.DoWork += CheckProcess;
+			backgroundWorker5.DoWork += CheckProcess;
 
 			//Reading Signatures
 			DirectoryInfo dSig = new DirectoryInfo(sigDirectory);
@@ -255,13 +251,17 @@ namespace ProcessBouncerService
 			eventWatcher.EventArrived += new EventArrivedEventHandler(checkProcessAsync);
 			eventWatcher.Start();
 
-			//Check for bilk writing with a timer
+			//Check for bulk writing with a timer
 			if (bulkCheck)
 			{
 				timerBulk.Elapsed += new ElapsedEventHandler(CheckTransferProcess);
 				timerBulk.Interval = intervalBulk;
 				timerBulk.Enabled = true;
 			}
+
+			timerRecheck.Elapsed += new ElapsedEventHandler(checkForGui);
+			timerRecheck.Interval = intervalRecheck;
+			timerRecheck.Enabled = true;
 		}
 
 		private void checkProcessAsync(object sender, EventArrivedEventArgs e)
@@ -270,17 +270,35 @@ namespace ProcessBouncerService
 
 			if (backgroundWorker1.IsBusy != true)
 			{
-				WriteLog(String.Format("{0} -> Worker1", pid));
-				WriteLog(gui.ToString());
+				WriteLog("Worker1");
 				backgroundWorker1.RunWorkerAsync(argument: pid);
 			}
 			else if (backgroundWorker2.IsBusy != true)
 			{
-				WriteLog(String.Format("{0} -> Worker2", pid));
-				WriteLog(gui.ToString());
+				WriteLog("Worker2");
 				backgroundWorker2.RunWorkerAsync(argument: pid);
 			}
-			//wait till one is finished TODO
+			else if (backgroundWorker3.IsBusy != true)
+			{
+				WriteLog("Worker3");
+				backgroundWorker3.RunWorkerAsync(argument: pid);
+			}
+			else if (backgroundWorker4.IsBusy != true)
+			{
+				WriteLog("Worker4");
+				backgroundWorker4.RunWorkerAsync(argument: pid);
+			}
+			else if (backgroundWorker5.IsBusy != true)
+			{
+				WriteLog("Worker5");
+				backgroundWorker5.RunWorkerAsync(argument: pid);
+			}
+			else{
+				WriteLog("TempWorker");
+				BackgroundWorker tempBackgroundWorker = new BackgroundWorker();
+				tempBackgroundWorker.DoWork += CheckProcess;
+				tempBackgroundWorker.RunWorkerAsync(argument: pid);
+			}
 			return;
 		}
 
@@ -301,6 +319,7 @@ namespace ProcessBouncerService
 				object name = tmp.Properties["Name"].Value;
 
 				bool whitelistedScript = false;
+				bool whitelistedPath = false;
 
 				string der;
 				bool sepr;
@@ -308,7 +327,7 @@ namespace ProcessBouncerService
 				bool spr;
 				bool sppr;
 				bool mdsr;
-				bool obfus;
+				bool obfusr;
 
 				//Stop when Process is whitlisted
 				if (whitelistedProcesses.Contains(procName))
@@ -331,6 +350,21 @@ namespace ProcessBouncerService
 					break;
 				}
 
+				//Whitelisted Path
+				foreach (string s in whitelistedPaths)
+				{
+					string pattern = String.Format(@"{0}", s);
+					MatchCollection tmpMatch = Regex.Matches(cmd.ToString(), pattern);
+					if (tmpMatch.Count > 0)
+					{
+						whitelistedPath = true;
+					}
+				}
+				if (whitelistedPath)
+				{
+					break;
+				}
+
 				if (debug)
 				{
 					WriteLog(String.Format("Checking - {0}({1})", procName, pid));
@@ -344,6 +378,10 @@ namespace ProcessBouncerService
 				{
 					spr = false;
 				}
+				if (debug)
+				{
+					WriteLog(String.Format("SuspProc: {0}", spr));
+				}
 				if (sppc[0] == '1')
 				{
 					sppr = suspiciousParentProcessFunc((uint)ppid);
@@ -351,6 +389,10 @@ namespace ProcessBouncerService
 				else
 				{
 					sppr = false;
+				}
+				if (debug)
+				{
+					WriteLog(String.Format("SuspParentProc: {0}", sppr));
 				}
 				if (mhc[0] == '1')
 				{
@@ -360,6 +402,10 @@ namespace ProcessBouncerService
 				{
 					mhr = false;
 				}
+				if (debug)
+				{
+					WriteLog(String.Format("MalHash: {0}", mhr));
+				}
 				if (sepc[0] == '1')
 				{
 					sepr = suspiciousExePathFunc(cmd.ToString());
@@ -367,6 +413,10 @@ namespace ProcessBouncerService
 				else
 				{
 					sepr = false;
+				}
+				if (debug)
+				{
+					WriteLog(String.Format("SuspExePath: {0}", sepr));
 				}
 				if (dec[0] == '1')
 				{
@@ -376,6 +426,10 @@ namespace ProcessBouncerService
 				{
 					der = "false";
 				}
+				if (debug)
+				{
+					WriteLog(String.Format("doubleExt: {0}", der));
+				}
 				if (mdsc[0] == '1')
 				{
 					mdsr = dynamicSignatureFunc(cmd.ToString());
@@ -384,13 +438,21 @@ namespace ProcessBouncerService
 				{
 					mdsr = false;
 				}
-				if (checkObfuscation)
+				if (debug)
 				{
-					obfus = checkObfuscationFunc(cmd.ToString());
+					WriteLog(String.Format("malDynSig: {0}",mdsr));
+				}
+				if (obfusc[0] == '1')
+				{
+					obfusr = checkObfuscationFunc(cmd.ToString());
 				}
 				else
 				{
-					obfus = false;
+					obfusr = false;
+				}
+				if (debug)
+				{
+					WriteLog(String.Format("obfuscation: {0}", obfusr));
 				}
 
 				//Logging
@@ -413,19 +475,25 @@ namespace ProcessBouncerService
 				if (sppc[3] == '1' && sppr){
 					WriteLog(String.Format("SuspiciousProcess - {0}({1}) - started from - ({2})", procName, pid, ppid));
 				}
-				if (obfus){
+				if (obfusc[3] == '1' && obfusr){
 					WriteLog("Obfuscated cmdLine");
 				}
 
 				//Reaction
 				if (gui)
 				{
-					if ((mhc[1] == '1' && mhr) || (mdsc[1] == '1' && mdsr) || (sepc[1] == '1' && sepr) || (dec[1] == '1' && der != "false") || (spc[1] == '1' && spr) || (sppc[1] == '1' && sppr)){
+					if ((mhc[1] == '1' && mhr) || (mdsc[1] == '1' && mdsr) || (sepc[1] == '1' && sepr) || (dec[1] == '1' && der != "false") || (spc[1] == '1' && spr) || (sppc[1] == '1' && sppr) || (obfusc[1] == '1' && obfusr)){
 						KillProc((uint)pid);
 					}
-					else if ((mhc[1] == '4' && mhr) || (mdsc[1] == '4' && mdsr) || (sepc[1] == '4' && sepr) || (dec[1] == '4' && der != "false") || (spc[1] == '4' && spr) || (sppc[1] == '4' && sppr)){
+					else if ((mhc[1] == '4' && mhr) || (mdsc[1] == '4' && mdsr) || (sepc[1] == '4' && sepr) || (dec[1] == '4' && der != "false") || (spc[1] == '4' && spr) || (sppc[1] == '4' && sppr) || (obfusc[1] == '4' && obfusr)){
 						gui = false;
-						string userReturn = ask((uint)pid, exePath.ToString());
+						int i = 0;
+						if ( mhr || mdsr || spr || sppr || obfusr ){
+							i = 1;
+						}else if ( sepr || der != "false" ){
+							i = 3;
+						}
+						string userReturn = ask((uint)pid, cmd.ToString(), i);
 						if (userReturn == "K"){
 							KillProc((uint)pid);
 							WriteLog(String.Format("User killed - {0}({1})", procName, pid));
@@ -443,16 +511,16 @@ namespace ProcessBouncerService
 							gui = true;
 						}
 					}
-					else if ((mhc[1] == '2' && mhr) || (mdsc[1] == '2' && mdsr) || (sepc[1] == '2' && sepr) || (dec[1] == '2' && der != "false") || (spc[1] == '2' && spr) || (sppc[1] == '2' && sppr)){
+					else if ((mhc[1] == '2' && mhr) || (mdsc[1] == '2' && mdsr) || (sepc[1] == '2' && sepr) || (dec[1] == '2' && der != "false") || (spc[1] == '2' && spr) || (sppc[1] == '2' && sppr) || (obfusc[1] == '2' && obfusr)){
 						SuspendProc((uint)pid);
 					}
 				}
 				else
 				{
-					if ((mhc[2] == '1' && mhr) || (mdsc[2] == '1' && mdsr) || (sepc[2] == '1' && sepr) || (dec[2] == '1' && der != "false") || (spc[2] == '1' && spr) || (sppc[2] == '1' && sppr)){
+					if ((mhc[2] == '1' && mhr) || (mdsc[2] == '1' && mdsr) || (sepc[2] == '1' && sepr) || (dec[2] == '1' && der != "false") || (spc[2] == '1' && spr) || (sppc[2] == '1' && sppr) || (obfusc[2] == '1' && obfusr)){
 						KillProc((uint)pid);
 					}
-					else if ((mhc[2] == '2' && mhr) || (mdsc[2] == '2' && mdsr) || (sepc[2] == '2' && sepr) || (dec[2] == '2' && der != "false") || (spc[2] == '2' && spr) || (sppc[2] == '2' && sppr)){
+					else if ((mhc[2] == '2' && mhr) || (mdsc[2] == '2' && mdsr) || (sepc[2] == '2' && sepr) || (dec[2] == '2' && der != "false") || (spc[2] == '2' && spr) || (sppc[2] == '2' && sppr) || (obfusc[2] == '2' && obfusr)){
 						SuspendProc((uint)pid);
 					}
 				}
@@ -479,10 +547,7 @@ namespace ProcessBouncerService
 			{
 				object procName = tmp.Properties["Caption"].Value;
 				object pid = tmp.Properties["ProcessId"].Value;
-				object ppid = tmp.Properties["ParentProcessId"].Value;
 				object cmd = tmp.Properties["CommandLine"].Value;
-				object exePath = tmp.Properties["ExecutablePath"].Value;
-				object name = tmp.Properties["Name"].Value;
 
 				bool whitelistedScript = false;
 
@@ -512,7 +577,7 @@ namespace ProcessBouncerService
 				WriteLog(String.Format("{0}({1}) does bulk writing", procName, pid));
 				if (gui)
 				{
-					string userReturn = ask((uint)pid, procName.ToString());
+					string userReturn = ask((uint)pid, procName.ToString(), 2);
 					if (userReturn == "K"){
 						KillProc((uint)pid);
 						WriteLog(String.Format("User killed - {0}({1})", procName, pid));
@@ -601,10 +666,11 @@ namespace ProcessBouncerService
 
 		private bool dynamicSignatureFunc(string cmd)
 		{
-			string PathPattern = @"[A-Z]\:\\[\w(?\\)]*.\w*";
+			string PathPattern = @"[A-Z]\:\\[\w(?\\)]*.\w*(\.\w*)?";
 			MatchCollection cmdFiles = Regex.Matches(cmd, PathPattern);
 			foreach (var file in cmdFiles){
-				if (Regex.Matches(file.ToString(), @"\.txt").Count > 0)
+				//Only check if file is in suspicious Path, because this is very resource intensive
+				if (suspiciousExePathFunc(file.ToString()))
 				{
 					FileStream fs = new FileStream(file.ToString(), FileMode.Open);
 					int hexIn;
@@ -669,25 +735,37 @@ namespace ProcessBouncerService
 			return "Error";
 		}
 
-		private bool checkObfuscationFunc(string cmd)
+		private bool obfuscationLimiter(string cmd)
 		{
-			//Check with Kullback-Leiber-Divergenz for informationgain
+			if ((Regex.Matches(cmd,@"cmd\.exe").Count > 0) || (Regex.Matches(cmd,@"powershell\.exe").Count > 0)){
+				return true;
+			}
 			return false;
 		}
 
-		private string ask(uint pid, string exePath){
+		private bool checkObfuscationFunc(string cmd)
+		{
+			if (cmd.Length >= 100 && obfuscationLimiter(cmd)){
+				return true;
+			}
+			return false;
+		}
+
+		private string ask(uint pid, string exePath, int lvl){
 			SuspendProc(pid);
-			sendMsg(exePath);
+			sendMsg(exePath, lvl);
 			Message userRet = rcvMsg();
 			return userRet.Label.ToString();
 		}
 
-		private void sendMsg(string lbl)
+		private void sendMsg(string lbl, int lvl)
 		{
 			Message message = new Message();
-			message.Label = lbl;
+			string lvllbl = lvl.ToString() + lbl;
+			message.Label = lvllbl;
 			try
 			{
+				WriteLog(message.Label.ToString());
 				pbq.Send(message);
 			}
 			catch (MessageQueueException e)
@@ -716,6 +794,15 @@ namespace ProcessBouncerService
 			}
 			Message empty = new Message();
 			return empty;
+		}
+
+		private void checkForGui(object source, ElapsedEventArgs e)
+		{
+			var guiProc = Process.GetProcessesByName("ProcessBouncerGUI");
+			if (guiProc.Length <= 0){
+				gui = false;
+				guiAtStartUp = false;
+			}
 		}
 
 		private void SuspendProc(uint procId)

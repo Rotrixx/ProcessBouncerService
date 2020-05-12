@@ -1,4 +1,4 @@
-Enable-WindowsOptionalFeature -Online -FeatureName MSMQ-Server
+Enable-WindowsOptionalFeature -Online -FeatureName "MSMQ-Server" -all
 
 New-MsmqQueue -Name "pbq" -QueueType Private
 $lang = [System.Globalization.Cultureinfo]::CurrentCulture.Name
@@ -11,11 +11,34 @@ ElseIf ($lang -match "en-"){
 	Get-MsmqQueue -Name "pbq" -QueueType Private | Set-MsmqQueueAcl -UserName "Everyone" -Allow WriteMessage
 }
 Else{
-	WriteHost "Please edit this script to support your language"
+	Write-Host "Please edit this script to support your language"
 }
 
 Copy-Item '.\ProcessBouncer\' -Destination 'C:\ProcessBouncer' -recurse
 
-New-Service -Name "ProcessBouncerService" -BinaryPathName "C:\ProcessBouncer\ProcessBouncerService.exe" -StartupType "Manual" -Description "A process-based malware protection tool."
+Write-Host "Do you want to start service:"
+Write-Host "1 - automatically without gui"
+Write-Host "2 - automatically with gui"
+Write-Host "3 - manually"
+$instType = Read-Host
+
+If ($instType -eq 1){
+	New-Service -Name "ProcessBouncerService" -BinaryPathName "C:\ProcessBouncer\ProcessBouncerService.exe" -StartupType "Automatic" -Description "A process-based malware protection tool."
+}ElseIf ($instType -eq 2){
+	New-Service -Name "ProcessBouncerService" -BinaryPathName "C:\ProcessBouncer\ProcessBouncerService.exe" -StartupType "Automatic" -Description "A process-based malware protection tool."
+	If ($lang -match "de-"){
+		Copy-Item "C:\ProcessBouncer\ProcessBouncerGUI.exe" -Destination "C:\Benutzer\$env:UserName\AppData\Roaming\Microsoft\Windows\Startmenü\Programme\Autostart\ProcessBouncerGUI.exe"
+	}
+	ElseIf ($lang -match "en-"){
+		Copy-Item "C:\ProcessBouncer\ProcessBouncerGUI.exe" -Destination "C:\Users\$env:UserName\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\StartupProcessBouncerGUI.exe"
+	}
+	Else{
+		Write-Host "Please edit this script to support your language"
+	}
+}ElseIf ($instType -eq 3){
+	New-Service -Name "ProcessBouncerService" -BinaryPathName "C:\ProcessBouncer\ProcessBouncerService.exe" -StartupType "Manual" -Description "A process-based malware protection tool."
+}Else{
+	Write-Host "Please select 1 2 or 3"
+}
 
 Start-Process -FilePath "C:\ProcessBouncer\ProcessBouncerGUI.exe"

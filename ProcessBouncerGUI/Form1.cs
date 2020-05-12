@@ -14,16 +14,13 @@ using System.Windows.Forms;
 using Message = System.Messaging.Message;
 using static ProcessBouncerGUI.PupUp;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace ProcessBouncerGUI
 {
 	public partial class Form1 : Form
 	{
 		MessageQueue pbq;
-		MessagePriority highest = MessagePriority.Highest;
-		MessagePriority high = MessagePriority.High;
-		MessagePriority normal = MessagePriority.Normal;
-		MessagePriority low = MessagePriority.Low;
 
 		TimeSpan interval = new TimeSpan(0,0,1); //1 sec?
 
@@ -42,33 +39,6 @@ namespace ProcessBouncerGUI
 			pbq.ReceiveCompleted += new ReceiveCompletedEventHandler(QueueMessageReceived);
 			pbq.BeginReceive();
 		}
-
-		/*
-		while (true)
-		{
-			Message curr = rcvMsg(interval);
-			if(curr.Label.ToString() == "Susp")
-			{
-				PupUp tmp = new PupUp();
-				tmp.Show();
-				Message response = rcvMsg(new TimeSpan(0, 1, 0));
-				if (response.Body.ToString() == "Done")
-				{
-					tmp.Close();
-				}
-			}
-			else if(curr.Label.ToString() == "Bulk")
-			{
-				PupUp tmp = new PupUp();
-				tmp.Show();
-				Message response = rcvMsg(new TimeSpan(0,1,0));
-				if (response.Body.ToString() == "Done")
-				{
-					tmp.Close();
-				}
-			}
-		}
-		*/
 
 		private void buttonAddProc_Click(object sender, EventArgs e)
 		{
@@ -112,29 +82,6 @@ namespace ProcessBouncerGUI
 			message.Label = lbl;
 			pbq.Send(message);
 			return;
-		}
-
-		private Message rcvMsg(TimeSpan interval)
-		{
-			//pbq.MessageReadPropertyFilter.Priority = true;
-			//pbq.Formatter = new XmlMessageFormatter(new Type[] {typeof(string)});
-			try
-			{
-				Message message = pbq.Receive(interval);
-				return message;
-			}
-			catch (MessageQueueException e)
-			{
-				Console.WriteLine(e.Message);
-				Console.WriteLine(e.ErrorCode);
-				Console.WriteLine(e.MessageQueueErrorCode);
-			}
-			catch (InvalidOperationException e)
-			{
-				
-			}
-			Message empty = new Message();
-			return empty;
 		}
 
 		private void EncryptFile(string inputFile, string outputFile)
@@ -209,6 +156,11 @@ namespace ProcessBouncerGUI
 			}
 		}
 
+		private static string SpliceText(string text, int lineLength)
+		{
+			return Regex.Replace(text, "(.{" + lineLength + "})", "$1" + Environment.NewLine);
+		}
+
 		private void QueueMessageReceived(Object source, ReceiveCompletedEventArgs asyncResult)
 		{
 			MessageQueue mq = (MessageQueue)source;
@@ -217,7 +169,22 @@ namespace ProcessBouncerGUI
 			Message curr = mq.EndReceive(asyncResult.AsyncResult);
 
 			PupUp temp = new PupUp();
-			temp.LblText = curr.Label.ToString();
+			char msgLvl = curr.Label.ToString()[0];
+			string msg = curr.Label.ToString();
+			string labelTextPure = msg.Substring(1);
+			string labelText = SpliceText(labelTextPure, 60);
+			temp.LblText = labelText;
+			if (msgLvl == '1'){
+				temp.MsgText = "this Application is most likely DANGEROUS or could be used in that way.\nPlease Kill it unless you are absolutly sure it is not MALICiOUS.";
+			}else if (msgLvl == '2'){
+				temp.MsgText = "this Application writes in bulk. If this is not something YOU allowed\nthis could be MALWARE.";
+			}else if (msgLvl == '3'){
+				temp.MsgText = "this Application is suspicious. Please look into it or contact an administrator.";
+			}else{
+				temp.MsgText = "this Application could be DANGEROUS.";
+			}
+			//temp.MsgText = "this Application could be DANGEROUS.";
+			temp.Focus();
 			DialogResult result =  temp.ShowDialog();
 
 			if (result == DialogResult.Yes)

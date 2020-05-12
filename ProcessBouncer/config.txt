@@ -5,16 +5,16 @@ powershell.exe,cmd.exe,regedit.exe,cmd,powershell,msiexec.exe,certutil.exe,bitad
 #suspiciousParentProcesses
 WINWORD.EXE,EXCEL.EXE,POWERPNT.EXE,powershell.exe,cmd.exe,WINWORD,EXCEL,POWERPNT,cmd,powershell
 #suspiciousExecutionPaths Note: use \\ for path instead of \
-C:\\Users
+C:\\Users,C:\\Temp,C:\\Windows\\Temp
 #Ext1 for double ExtensionCheck not needed
 jpg,jpeg,png,pdf,doc,docx,docm,dot,dotm,xls,xlsm,xltm,xlsx,xlsb,xlam,ppt,pot,pptx,pptm,potm,ppam,ppsm,sldm
 #Ext2 for double ExtensionCheck not needed
 exe,com,ps1,dll,bat,pif
-#WhitelistedPaths not implemented yet
+#WhitelistedPaths
 C:\Windows
 #WhitelistedProcesses
 svchost.exe,chrome.exe,devenv.exe,SearchUI.exe,SearchIndexer.exe,explorer.exe,MsMpEng.exe,taskhostw.exe,dllhost.exe,MicrosoftEdge.exe,ServiceHub.DataWarehouseHost.exe
-#WhitelistedScripts Note: Use full Path if possible and \\ for path instead of \
+#WhitelistedScripts Note: Use full Path if possible and \\ instead of \
 example.ps1
 #Check for bulk writing 0 => off 1 => on
 0
@@ -41,7 +41,7 @@ C:\ProcessBouncer\signatures
 C:\ProcessBouncer\yara
 #Check for dynamic YARA signature
 1111
-#Check for obfuscated powershell/cmd code 0 => off 1 => on
-1
+#Check for obfuscated cmdLine code
+1111
 #Debug 0 => off 1 => on
 0
