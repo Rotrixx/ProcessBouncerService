@@ -321,13 +321,13 @@ namespace ProcessBouncerService
 				bool whitelistedScript = false;
 				bool whitelistedPath = false;
 
-				string der;
-				bool sepr;
-				bool mhr;
-				bool spr;
-				bool sppr;
-				bool mdsr;
-				bool obfusr;
+				string der = "false";
+				bool sepr = false;
+				bool mhr = false;
+				bool spr = false;
+				bool sppr = false;
+				bool mdsr = false;
+				bool obfusr = false;
 
 				//Stop when Process is whitlisted
 				if (whitelistedProcesses.Contains(procName))
@@ -370,7 +370,7 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("Checking - {0}({1})", procName, pid));
 				}
 
-				//Checking
+				//Checking Process
 				if (spc[0] == '1'){
 					spr = suspiciousProcessFunc(procName.ToString(), name.ToString());
 				}
@@ -382,6 +382,16 @@ namespace ProcessBouncerService
 				{
 					WriteLog(String.Format("SuspProc: {0}", spr));
 				}
+				if (spc[3] == '1' && spr)
+				{
+					WriteLog(String.Format("SuspiciousProcess - {0}({1})", procName, pid));
+				}
+				if(spr){
+					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					return;
+				}
+
+				//Checking ParentPRocess
 				if (sppc[0] == '1')
 				{
 					sppr = suspiciousParentProcessFunc((uint)ppid);
@@ -394,6 +404,15 @@ namespace ProcessBouncerService
 				{
 					WriteLog(String.Format("SuspParentProc: {0}", sppr));
 				}
+				if (sppc[3] == '1' && sppr){
+					WriteLog(String.Format("SuspiciousProcess - {0}({1}) - started from - ({2})", procName, pid, ppid));
+				}
+				if(sppr){
+					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					return;
+				}
+
+				//Checking ExecutableHash
 				if (mhc[0] == '1')
 				{
 					mhr = maliciousHashFunc(exePath.ToString());
@@ -406,30 +425,15 @@ namespace ProcessBouncerService
 				{
 					WriteLog(String.Format("MalHash: {0}", mhr));
 				}
-				if (sepc[0] == '1')
-				{
-					sepr = suspiciousExePathFunc(cmd.ToString());
+				if (mhc[3] == '1' && mhr){
+					WriteLog(String.Format("Signature found! - MALWARE! - {0}", exePath));
 				}
-				else
-				{
-					sepr = false;
+				if(mhr){
+					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					return;
 				}
-				if (debug)
-				{
-					WriteLog(String.Format("SuspExePath: {0}", sepr));
-				}
-				if (dec[0] == '1')
-				{
-					der = doubleExtFunc(cmd.ToString());
-				}
-				else
-				{
-					der = "false";
-				}
-				if (debug)
-				{
-					WriteLog(String.Format("doubleExt: {0}", der));
-				}
+
+				//Checking dynamicSignature
 				if (mdsc[0] == '1')
 				{
 					mdsr = dynamicSignatureFunc(cmd.ToString());
@@ -442,6 +446,15 @@ namespace ProcessBouncerService
 				{
 					WriteLog(String.Format("malDynSig: {0}",mdsr));
 				}
+				if (mdsc[3] == '1' && mdsr){
+					WriteLog(String.Format("Dynamic Signature found! - MALWARE! - {0}", cmd));
+				}
+				if(mdsr){
+					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					return;
+				}
+
+				//Checking cmdLine
 				if (obfusc[0] == '1')
 				{
 					obfusr = checkObfuscationFunc(cmd.ToString());
@@ -454,75 +467,54 @@ namespace ProcessBouncerService
 				{
 					WriteLog(String.Format("obfuscation: {0}", obfusr));
 				}
-
-				//Logging
-				if (mhc[3] == '1' && mhr){
-					WriteLog(String.Format("Signature found! - MALWARE! - {0}", exePath));
+				if (obfusc[3] == '1' && obfusr){
+					WriteLog("Obfuscated cmdLine");
 				}
-				if (mdsc[3] == '1' && mdsr){
-					WriteLog(String.Format("Dynamic Signature found! - MALWARE! - {0}", cmd));
+				if(obfusr){
+					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					return;
+				}
+
+				//Checking ExecutablePath
+				if (sepc[0] == '1')
+				{
+					sepr = suspiciousExePathFunc(cmd.ToString());
+				}
+				else
+				{
+					sepr = false;
+				}
+				if (debug)
+				{
+					WriteLog(String.Format("SuspExePath: {0}", sepr));
 				}
 				if (sepc[3] == '1' && sepr){
 					WriteLog(String.Format("SuspiciousExecutionPath - {0}({1}) - {2}", procName, pid, cmd));
 				}
-				if (dec[3] == '1' && der != "false"){
-					WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, der));
-				}
-				if (spc[3] == '1' && spr)
-				{
-					WriteLog(String.Format("SuspiciousProcess - {0}({1})", procName, pid));
-				}
-				if (sppc[3] == '1' && sppr){
-					WriteLog(String.Format("SuspiciousProcess - {0}({1}) - started from - ({2})", procName, pid, ppid));
-				}
-				if (obfusc[3] == '1' && obfusr){
-					WriteLog("Obfuscated cmdLine");
+				if(sepr){
+					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					return;
 				}
 
-				//Reaction
-				if (gui)
+				//Checking Extension
+				if (dec[0] == '1')
 				{
-					if ((mhc[1] == '1' && mhr) || (mdsc[1] == '1' && mdsr) || (sepc[1] == '1' && sepr) || (dec[1] == '1' && der != "false") || (spc[1] == '1' && spr) || (sppc[1] == '1' && sppr) || (obfusc[1] == '1' && obfusr)){
-						KillProc((uint)pid);
-					}
-					else if ((mhc[1] == '4' && mhr) || (mdsc[1] == '4' && mdsr) || (sepc[1] == '4' && sepr) || (dec[1] == '4' && der != "false") || (spc[1] == '4' && spr) || (sppc[1] == '4' && sppr) || (obfusc[1] == '4' && obfusr)){
-						gui = false;
-						int i = 0;
-						if ( mhr || mdsr || spr || sppr || obfusr ){
-							i = 1;
-						}else if ( sepr || der != "false" ){
-							i = 3;
-						}
-						string userReturn = ask((uint)pid, cmd.ToString(), i);
-						if (userReturn == "K"){
-							KillProc((uint)pid);
-							WriteLog(String.Format("User killed - {0}({1})", procName, pid));
-						}
-						else if (userReturn == "S"){
-							SuspendProc((uint)pid);
-							WriteLog(String.Format("User suspends - {0}({1})", procName, pid));
-						}
-						else if (userReturn == "R"){
-							ResumeProc((uint)pid);
-							WriteLog(String.Format("User resumed - {0}({1})", procName, pid));
-						}
-						if (gui == false && guiAtStartUp == true)
-						{
-							gui = true;
-						}
-					}
-					else if ((mhc[1] == '2' && mhr) || (mdsc[1] == '2' && mdsr) || (sepc[1] == '2' && sepr) || (dec[1] == '2' && der != "false") || (spc[1] == '2' && spr) || (sppc[1] == '2' && sppr) || (obfusc[1] == '2' && obfusr)){
-						SuspendProc((uint)pid);
-					}
+					der = doubleExtFunc(cmd.ToString());
 				}
 				else
 				{
-					if ((mhc[2] == '1' && mhr) || (mdsc[2] == '1' && mdsr) || (sepc[2] == '1' && sepr) || (dec[2] == '1' && der != "false") || (spc[2] == '1' && spr) || (sppc[2] == '1' && sppr) || (obfusc[2] == '1' && obfusr)){
-						KillProc((uint)pid);
-					}
-					else if ((mhc[2] == '2' && mhr) || (mdsc[2] == '2' && mdsr) || (sepc[2] == '2' && sepr) || (dec[2] == '2' && der != "false") || (spc[2] == '2' && spr) || (sppc[2] == '2' && sppr) || (obfusc[2] == '2' && obfusr)){
-						SuspendProc((uint)pid);
-					}
+					der = "false";
+				}
+				if (debug)
+				{
+					WriteLog(String.Format("doubleExt: {0}", der));
+				}
+				if (dec[3] == '1' && der != "false"){
+					WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, der));
+				}
+				if(der != "false"){
+					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					return;
 				}
 
 				if (debug)
@@ -638,25 +630,38 @@ namespace ProcessBouncerService
 
 		private bool suspiciousParentProcessFunc(uint ppid)
 		{
-			WqlObjectQuery parentQuery = new WqlObjectQuery(String.Format("SELECT Caption FROM Win32_Process WHERE ProcessId={0}", ppid));
-			ManagementObjectSearcher searcherParent = new ManagementObjectSearcher(parentQuery);
-			ManagementObjectCollection collectionParent = searcherParent.Get();
-			string parentProcName = "";
-			foreach (ManagementObject tmpParent in collectionParent)
-			{
-				parentProcName = tmpParent.Properties["Caption"].ToString();
-				if (suspiciousParents.Contains(parentProcName))
+			WriteLog(ppid.ToString());
+			try{
+				WqlObjectQuery parentQuery = new WqlObjectQuery(String.Format("SELECT * FROM Win32_Process WHERE ProcessId={0}", ppid));
+				ManagementObjectSearcher searcherParent = new ManagementObjectSearcher(parentQuery);
+				ManagementObjectCollection collectionParent = searcherParent.Get();
+				string parentProcName = "";
+				string ppName = "";
+				foreach (ManagementObject tmpParent in collectionParent)
 				{
-					return true;
+					parentProcName = tmpParent.Properties["Caption"].Value.ToString();
+					ppName = tmpParent.Properties["Name"].Value.ToString();
+					WriteLog(parentProcName);
+					if (suspiciousParents.Contains(parentProcName) || suspiciousParents.Contains(ppName))
+					{
+						return true;
+					}
 				}
+				return false;
 			}
-			return false;
+			catch (Exception e){
+				WriteLog(String.Format("Exception: {0}", e.Message));
+				return false;
+			}
 		}
 
 		//Checking for a known malware signature
 		private bool maliciousHashFunc(string exePath)
 		{
 			string suspMD5 = CalculateMD5(exePath);
+			if (suspMD5 == "false"){
+				return false;
+			}
 			if (sig.Contains(suspMD5))
 			{
 				return true;
@@ -705,13 +710,21 @@ namespace ProcessBouncerService
 
 		private string CalculateMD5(string filename)
 		{
-			using (var md5 = MD5.Create())
+			if (File.Exists(filename))
 			{
-				using (var stream = File.OpenRead(filename))
-				{
+				var md5 = MD5.Create();
+				try{
+					var stream = File.OpenRead(filename);
 					var hash = md5.ComputeHash(stream);
 					return BitConverter.ToString(hash).Replace("-", "").ToLower();
 				}
+				catch (Exception e){
+					WriteLog(String.Format("Exception: {0}", e.Message));
+					return "false";
+				}
+			}
+			else{
+				return "false";
 			}
 		}
 
@@ -749,6 +762,53 @@ namespace ProcessBouncerService
 				return true;
 			}
 			return false;
+		}
+
+		private void react(object pid, object cmd, object procName, char[] mhc, bool mhr, char[] mdsc, bool mdsr, char[] sepc, bool sepr, char[] dec, string der, char[] spc, bool spr, char[] sppc, bool sppr, char[] obfusc, bool obfusr){
+			if (gui)
+			{
+				if ((mhc[1] == '1' && mhr) || (mdsc[1] == '1' && mdsr) || (sepc[1] == '1' && sepr) || (dec[1] == '1' && der != "false") || (spc[1] == '1' && spr) || (sppc[1] == '1' && sppr) || (obfusc[1] == '1' && obfusr)){
+					KillProc((uint)pid);
+				}
+				else if ((mhc[1] == '4' && mhr) || (mdsc[1] == '4' && mdsr) || (sepc[1] == '4' && sepr) || (dec[1] == '4' && der != "false") || (spc[1] == '4' && spr) || (sppc[1] == '4' && sppr) || (obfusc[1] == '4' && obfusr)){
+					gui = false;
+					int i = 0;
+					if ( mhr || mdsr || spr || sppr || obfusr ){
+						i = 1;
+					}else if ( sepr || der != "false" ){
+						i = 3;
+					}
+					string userReturn = ask((uint)pid, cmd.ToString(), i);
+					if (userReturn == "K"){
+						KillProc((uint)pid);
+						WriteLog(String.Format("User killed - {0}({1})", procName, pid));
+					}
+					else if (userReturn == "S"){
+						SuspendProc((uint)pid);
+						WriteLog(String.Format("User suspends - {0}({1})", procName, pid));
+					}
+					else if (userReturn == "R"){
+						ResumeProc((uint)pid);
+						WriteLog(String.Format("User resumed - {0}({1})", procName, pid));
+					}
+					if (gui == false && guiAtStartUp == true)
+					{
+						gui = true;
+					}
+				}
+				else if ((mhc[1] == '2' && mhr) || (mdsc[1] == '2' && mdsr) || (sepc[1] == '2' && sepr) || (dec[1] == '2' && der != "false") || (spc[1] == '2' && spr) || (sppc[1] == '2' && sppr) || (obfusc[1] == '2' && obfusr)){
+					SuspendProc((uint)pid);
+				}
+			}
+			else
+			{
+				if ((mhc[2] == '1' && mhr) || (mdsc[2] == '1' && mdsr) || (sepc[2] == '1' && sepr) || (dec[2] == '1' && der != "false") || (spc[2] == '1' && spr) || (sppc[2] == '1' && sppr) || (obfusc[2] == '1' && obfusr)){
+					KillProc((uint)pid);
+				}
+				else if ((mhc[2] == '2' && mhr) || (mdsc[2] == '2' && mdsr) || (sepc[2] == '2' && sepr) || (dec[2] == '2' && der != "false") || (spc[2] == '2' && spr) || (sppc[2] == '2' && sppr) || (obfusc[2] == '2' && obfusr)){
+					SuspendProc((uint)pid);
+				}
+			}
 		}
 
 		private string ask(uint pid, string exePath, int lvl){
