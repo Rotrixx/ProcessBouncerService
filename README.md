@@ -14,11 +14,6 @@ If you want to add your own signatures, add the MD5-Hashes in a file with each h
 
 ProcessBouncerService does also support dynamic signatures(Hex-strings). **This is in a early testing stage.**
 
-## **NOTES:**
-The service dosen't start automatically and may cause problems if started too early(during startup).
-The GUI has to be started before the service or the popup's dont work correctly.
-This project is currently work in progress. Only basic functionality is working right now. Suggestions and feedback is more than welcome.
-
 ## Contact:
 If you have questions, feedback or suggestions feel free to contact me.
 
