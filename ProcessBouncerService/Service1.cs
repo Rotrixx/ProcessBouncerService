@@ -37,6 +37,7 @@ namespace ProcessBouncerService
 		bool bulkCheck = false;
 		bool gui;
 		bool guiAtStartUp;
+		bool possibleGui = false;
 
 		char[] dec;
 		char[] sepc;
@@ -214,6 +215,12 @@ namespace ProcessBouncerService
 						obfusc = line.ToCharArray(0,4);
 						break;
 					case 21:
+						int guiInt = Convert.ToInt32(line);
+						if (guiInt == 1){
+							possibleGui = true;
+						}
+						break;
+					case 22:
 						int debugInt = Convert.ToInt32(line);
 						if (debugInt == 1){
 							debug = true;
@@ -259,9 +266,12 @@ namespace ProcessBouncerService
 				timerBulk.Enabled = true;
 			}
 
-			timerRecheck.Elapsed += new ElapsedEventHandler(checkForGui);
-			timerRecheck.Interval = intervalRecheck;
-			timerRecheck.Enabled = true;
+			if (possibleGui)
+			{
+				timerRecheck.Elapsed += new ElapsedEventHandler(checkForGui);
+				timerRecheck.Interval = intervalRecheck;
+				timerRecheck.Enabled = true;
+			}
 		}
 
 		private void checkProcessAsync(object sender, EventArrivedEventArgs e)
@@ -270,31 +280,25 @@ namespace ProcessBouncerService
 
 			if (backgroundWorker1.IsBusy != true)
 			{
-				WriteLog("Worker1");
 				backgroundWorker1.RunWorkerAsync(argument: pid);
 			}
 			else if (backgroundWorker2.IsBusy != true)
 			{
-				WriteLog("Worker2");
 				backgroundWorker2.RunWorkerAsync(argument: pid);
 			}
 			else if (backgroundWorker3.IsBusy != true)
 			{
-				WriteLog("Worker3");
 				backgroundWorker3.RunWorkerAsync(argument: pid);
 			}
 			else if (backgroundWorker4.IsBusy != true)
 			{
-				WriteLog("Worker4");
 				backgroundWorker4.RunWorkerAsync(argument: pid);
 			}
 			else if (backgroundWorker5.IsBusy != true)
 			{
-				WriteLog("Worker5");
 				backgroundWorker5.RunWorkerAsync(argument: pid);
 			}
 			else{
-				WriteLog("TempWorker");
 				BackgroundWorker tempBackgroundWorker = new BackgroundWorker();
 				tempBackgroundWorker.DoWork += CheckProcess;
 				tempBackgroundWorker.RunWorkerAsync(argument: pid);
@@ -387,7 +391,7 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("SuspiciousProcess - {0}({1})", procName, pid));
 				}
 				if(spr){
-					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					react(pid, ppid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
 					return;
 				}
 
@@ -408,7 +412,7 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("SuspiciousProcess - {0}({1}) - started from - ({2})", procName, pid, ppid));
 				}
 				if(sppr){
-					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					react(pid, ppid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
 					return;
 				}
 
@@ -429,7 +433,7 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("Signature found! - MALWARE! - {0}", exePath));
 				}
 				if(mhr){
-					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					react(pid, ppid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
 					return;
 				}
 
@@ -450,7 +454,7 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("Dynamic Signature found! - MALWARE! - {0}", cmd));
 				}
 				if(mdsr){
-					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					react(pid, ppid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
 					return;
 				}
 
@@ -471,7 +475,7 @@ namespace ProcessBouncerService
 					WriteLog("Obfuscated cmdLine");
 				}
 				if(obfusr){
-					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					react(pid, ppid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
 					return;
 				}
 
@@ -492,7 +496,7 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("SuspiciousExecutionPath - {0}({1}) - {2}", procName, pid, cmd));
 				}
 				if(sepr){
-					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					react(pid, ppid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
 					return;
 				}
 
@@ -513,7 +517,7 @@ namespace ProcessBouncerService
 					WriteLog(String.Format("DoubleExtension - {0}({1}) - {2}", procName, pid, der));
 				}
 				if(der != "false"){
-					react(pid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
+					react(pid, ppid, cmd, procName, mhc, mhr, mdsc, mdsr, sepc, sepr, dec, der, spc, spr, sppc, sppr, obfusc, obfusr);
 					return;
 				}
 
@@ -630,7 +634,6 @@ namespace ProcessBouncerService
 
 		private bool suspiciousParentProcessFunc(uint ppid)
 		{
-			WriteLog(ppid.ToString());
 			try{
 				WqlObjectQuery parentQuery = new WqlObjectQuery(String.Format("SELECT * FROM Win32_Process WHERE ProcessId={0}", ppid));
 				ManagementObjectSearcher searcherParent = new ManagementObjectSearcher(parentQuery);
@@ -641,7 +644,6 @@ namespace ProcessBouncerService
 				{
 					parentProcName = tmpParent.Properties["Caption"].Value.ToString();
 					ppName = tmpParent.Properties["Name"].Value.ToString();
-					WriteLog(parentProcName);
 					if (suspiciousParents.Contains(parentProcName) || suspiciousParents.Contains(ppName))
 					{
 						return true;
@@ -764,11 +766,14 @@ namespace ProcessBouncerService
 			return false;
 		}
 
-		private void react(object pid, object cmd, object procName, char[] mhc, bool mhr, char[] mdsc, bool mdsr, char[] sepc, bool sepr, char[] dec, string der, char[] spc, bool spr, char[] sppc, bool sppr, char[] obfusc, bool obfusr){
+		private void react(object pid, object ppid, object cmd, object procName, char[] mhc, bool mhr, char[] mdsc, bool mdsr, char[] sepc, bool sepr, char[] dec, string der, char[] spc, bool spr, char[] sppc, bool sppr, char[] obfusc, bool obfusr){
 			if (gui)
 			{
 				if ((mhc[1] == '1' && mhr) || (mdsc[1] == '1' && mdsr) || (sepc[1] == '1' && sepr) || (dec[1] == '1' && der != "false") || (spc[1] == '1' && spr) || (sppc[1] == '1' && sppr) || (obfusc[1] == '1' && obfusr)){
 					KillProc((uint)pid);
+					if (sppr){
+						KillProc((uint)ppid);
+					}
 				}
 				else if ((mhc[1] == '4' && mhr) || (mdsc[1] == '4' && mdsr) || (sepc[1] == '4' && sepr) || (dec[1] == '4' && der != "false") || (spc[1] == '4' && spr) || (sppc[1] == '4' && sppr) || (obfusc[1] == '4' && obfusr)){
 					gui = false;
@@ -782,6 +787,10 @@ namespace ProcessBouncerService
 					if (userReturn == "K"){
 						KillProc((uint)pid);
 						WriteLog(String.Format("User killed - {0}({1})", procName, pid));
+						if (sppr){
+							KillProc((uint)ppid);
+							WriteLog(String.Format("User killed - ({0})", ppid));
+						}
 					}
 					else if (userReturn == "S"){
 						SuspendProc((uint)pid);
@@ -804,6 +813,9 @@ namespace ProcessBouncerService
 			{
 				if ((mhc[2] == '1' && mhr) || (mdsc[2] == '1' && mdsr) || (sepc[2] == '1' && sepr) || (dec[2] == '1' && der != "false") || (spc[2] == '1' && spr) || (sppc[2] == '1' && sppr) || (obfusc[2] == '1' && obfusr)){
 					KillProc((uint)pid);
+					if (sppr){
+						KillProc((uint)ppid);
+					}
 				}
 				else if ((mhc[2] == '2' && mhr) || (mdsc[2] == '2' && mdsr) || (sepc[2] == '2' && sepr) || (dec[2] == '2' && der != "false") || (spc[2] == '2' && spr) || (sppc[2] == '2' && sppr) || (obfusc[2] == '2' && obfusr)){
 					SuspendProc((uint)pid);

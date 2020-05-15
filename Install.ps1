@@ -17,7 +17,7 @@ Else{
 Copy-Item '.\ProcessBouncer\' -Destination 'C:\ProcessBouncer' -recurse
 
 Write-Host "Do you want to start service:"
-Write-Host "1 - automatically without gui"
+Write-Host "1 - automatically without gui (recommended)"
 Write-Host "2 - automatically with gui"
 Write-Host "3 - manually"
 $instType = Read-Host
@@ -26,15 +26,8 @@ If ($instType -eq 1){
 	New-Service -Name "ProcessBouncerService" -BinaryPathName "C:\ProcessBouncer\ProcessBouncerService.exe" -StartupType "Automatic" -Description "A process-based malware protection tool."
 }ElseIf ($instType -eq 2){
 	New-Service -Name "ProcessBouncerService" -BinaryPathName "C:\ProcessBouncer\ProcessBouncerService.exe" -StartupType "Automatic" -Description "A process-based malware protection tool."
-	If ($lang -match "de-"){
-		Copy-Item "C:\ProcessBouncer\ProcessBouncerGUI.exe" -Destination "C:\Benutzer\$env:UserName\AppData\Roaming\Microsoft\Windows\Startmenü\Programme\Autostart\ProcessBouncerGUI.exe"
-	}
-	ElseIf ($lang -match "en-"){
-		Copy-Item "C:\ProcessBouncer\ProcessBouncerGUI.exe" -Destination "C:\Users\$env:UserName\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\StartupProcessBouncerGUI.exe"
-	}
-	Else{
-		Write-Host "Please edit this script to support your language"
-	}
+	Copy-Item "C:\ProcessBouncer\ProcessBouncerGUI.exe" -Destination "C:\Users\$env:UserName\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\ProcessBouncerGUI.exe"
+	Write-Host "Please add C:\Users\[Your Username]\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup to the whitelisted Path in the config file."
 }ElseIf ($instType -eq 3){
 	New-Service -Name "ProcessBouncerService" -BinaryPathName "C:\ProcessBouncer\ProcessBouncerService.exe" -StartupType "Manual" -Description "A process-based malware protection tool."
 }Else{
